@@ -1,0 +1,533 @@
+---
+title: " Overview of data following filtering and pre-processing of downloaded studies from Recount3"
+author: "Prashanthi Ravichandran"
+output: html_document
+date: '2023-10-30'
+---
+
+```{r setup, include=FALSE}
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+This script can be used to regenerate the figures that were included in Figure 1 and Supplemental Figures 1 and 2. 
+The required files to generate these figures are provided in our Github repo and are as follows:
+
+1. /data/manual_annotations.tsv: Manual labels for disease, tissue and cancer status for 65404 samples from SRA
+2. /data/all_counts.rds: All samples included in this study 
+3. /data/all_metadata.rds: Metadata labels corresponding to tissue, cancer, and source for samples from SRA, GTEx, and TCGA. 
+4. /data/xcellScores.rds: Precomputed xcell deconvolution scores (refer to code if you'd like to recompute)
+5. /data/tsne_normal_xcell.rds: tSNE dimensionality reduction from xcell scores
+6. /data/immune_tSNE.rds: tSNE dimensionality reduction from xcell scores subset to immune samples
+7. /data/filter_two_fail.rds: Outliers in tissues other than immune system
+8. /data/immune_samples_outlier_detection.rds: Outliers in 3 subsets of samples belonging to the immune system
+
+
+Specify the R packages that are required to generate the plots. 
+```{r, echo = FALSE, message=FALSE}
+rm(list = ls())
+library(rmarkdown)
+library(knitr)
+library(yaml)
+library(stringi)
+library(magrittr)
+library(glue)
+library(xfun)
+library(mime)
+library(Rtsne)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(gridExtra)
+library(RColorBrewer)
+library(stringr)
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+sessionInfo()
+```
+
+### Read in processed metadata
+
+We first read in our processed meta-data and adjust a couple of typographical errors in the tissue labeling. 
+
+```{r}
+# Read metadata
+# Specify the directory into which you have cloned the recount3 repo
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+metadata <- readRDS(paste0(homeDir, "/data/all_metadata.rds"))
+metadata$tissue.category[metadata$tissue.category == "Whole_Blood"] <- "blood"
+metadata$tissue.category <- gsub("_", " ", metadata$tissue.category)
+metadata$tissue.category <- tolower(metadata$tissue.category)
+metadata$tissue.category[metadata$tissue.category == "brain cerebellum"] <- "cerebellum"
+metadata$tissue.category[metadata$tissue.category == "skeletal muscle "] <- "skeletal muscle"
+metadata$tissue.category[metadata$tissue.category == "muscle skeletal"] <- "skeletal muscle"
+metadata$tissue.category[metadata$tissue.category == "ipsc"] <- "ipscs"
+metadata$tissue.category[metadata$tissue.category == "prostate"] <- "prostrate"
+metadata$source <- metadata$study
+metadata$source[grep("DRP", metadata$source)] <- "sra"
+metadata$source[grep("SRP", metadata$source)] <- "sra"
+metadata$source[grep("ERP", metadata$source)] <- "sra"
+metadata$source[metadata$source != "sra" & metadata$source != "GTEx"] <- "TCGA"
+
+metadata$cancer[metadata$cancer == "cancer "] <- "cancer"
+metadata$cancer[metadata$cancer == ""] <- "none"
+metadata$cancer[metadata$tissue.category == "cells leukemia cell line cml"] <- "cancer"
+metadata <- metadata[!metadata$tissue.category == "cells leukemia cell line cml", ]
+
+GTEx_unique_tissues <- unique(metadata$tissue.category[metadata$source == "GTEx"])
+sra_unique_tissues <- unique(metadata$tissue.category[metadata$source == "sra"])
+TCGA_unique_tissues <- unique(metadata$tissue.category[metadata$source == "TCGA"])
+
+metaCounts_cancer <- data.frame("Cancer Status" = rep(unique(metadata$cancer), 3),
+                        "Source" = c(rep("GTEx", 3), rep("sra", 3), rep("TCGA", 3)))
+nCounts <- c()
+for(i in c(1:dim(metaCounts_cancer)[1])){
+  df <- metadata[metadata$source == metaCounts_cancer$Source[i], ]
+  df <- df[df$cancer == metaCounts_cancer$Cancer.Status[i], ]
+  nCounts[i] <- dim(df)[1]
+}            
+metaCounts_cancer$nSamples <- nCounts
+metaCounts_cancer$Cancer.Status[metaCounts_cancer$Cancer.Status == "cancer"] <- "Cancer"
+metaCounts_cancer$Cancer.Status[metaCounts_cancer$Cancer.Status == "none"] <- "Non-cancerous"
+metaCounts_cancer$Cancer.Status[metaCounts_cancer$Cancer.Status == "unknown"] <- "Unknown"
+metaCounts_cancer$Source[metaCounts_cancer$Source == "sra"] <- "SRA"
+
+```
+
+### Plot Fig 1B
+
+Obtain the visualize the number of samples from each data source that is cancerous. 
+
+```{r}
+p1_a <- ggplot(metaCounts_cancer,aes( x = Source, y = nSamples, fill = Cancer.Status)) + geom_bar(position="stack", stat="identity") +
+theme_classic() + xlab("") + ylab("Number of samples") + coord_flip() + guides(fill=guide_legend(title="Cancer status")) +
+ggtitle("Prevalence of Cancerous Samples\nin SRA, GTEx and TCGA") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                                          legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                                          axis.title = element_text(size = 12, face = "bold"))
+p1_a
+```
+
+### Plot Fig 1C
+
+Identify most-represented tissues in each data source SRA, GTEx and TCGA, plot the number of samples from each source present in one of these top 10 most represented tissue categories
+
+```{r}
+tissue_freq_sra <- table(metadata$tissue.category[metadata$source == "sra"])
+tissue_freq_GTEx <- table(metadata$tissue.category[metadata$source == "GTEx"])
+tissue_freq_TCGA <- table(metadata$tissue.category[metadata$source == "TCGA"])
+
+tissue_freq_sra <- data.frame(tissue_freq_sra)
+tissue_freq_GTEx <- data.frame(tissue_freq_GTEx)
+tissue_freq_TCGA <- data.frame(tissue_freq_TCGA)
+
+colnames(tissue_freq_sra) <- c("Tissue", "nSamples")
+colnames(tissue_freq_GTEx) <- c("Tissue", "nSamples")
+colnames(tissue_freq_TCGA) <- c("Tissue", "nSamples")
+
+tissue_freq_sra$Tissue <- as.character(tissue_freq_sra$Tissue)
+tissue_freq_GTEx$Tissue <- as.character(tissue_freq_GTEx$Tissue)
+tissue_freq_TCGA$Tissue <- as.character(tissue_freq_TCGA$Tissue)
+
+tissue_freq_sra <- tissue_freq_sra[!tissue_freq_sra$Tissue == "unknown", ]
+
+tissue_freq_sra <- tissue_freq_sra[order(tissue_freq_sra$nSamples, decreasing = TRUE), ]
+tissue_freq_GTEx <- tissue_freq_GTEx[order(tissue_freq_GTEx$nSamples, decreasing = TRUE), ]
+tissue_freq_TCGA <- tissue_freq_TCGA[order(tissue_freq_TCGA$nSamples, decreasing = TRUE), ]
+
+tissue_freq_sra$Tissue <- str_to_sentence(tissue_freq_sra$Tissue)
+tissue_freq_GTEx$Tissue <- str_to_sentence(tissue_freq_GTEx$Tissue)
+tissue_freq_TCGA$Tissue <- str_to_sentence(tissue_freq_TCGA$Tissue)
+
+tissue_freq_sra$Tissue[grep("Brain", tissue_freq_sra$Tissue)] <- "Central nervous system"
+tissue_freq_sra$Tissue[tissue_freq_sra$Tissue == "Adipocyte"] <- "Adipose"
+tissue_freq_sra$Tissue[tissue_freq_sra$Tissue == "Adipocytes"] <- "Adipose"
+
+tissue_freq_GTEx$Tissue[grep("Brain", tissue_freq_GTEx$Tissue)] <- "Central nervous system"
+tissue_freq_GTEx$Tissue[grep("Colon", tissue_freq_GTEx$Tissue)] <- "Colon"
+tissue_freq_GTEx$Tissue[grep("Skin", tissue_freq_GTEx$Tissue)] <- "Skin"
+tissue_freq_GTEx$Tissue[grep("Esophagus", tissue_freq_GTEx$Tissue)] <- "Esophagus"
+tissue_freq_GTEx$Tissue[grep("intestine", tissue_freq_GTEx$Tissue)] <- "Intestine"
+tissue_freq_GTEx$Tissue[grep("Adipose", tissue_freq_GTEx$Tissue)] <- "Adipose"
+tissue_freq_GTEx$Tissue[grep("Artery", tissue_freq_GTEx$Tissue)] <- "Artery"
+tissue_freq_GTEx$Tissue[grep("Heart", tissue_freq_GTEx$Tissue)] <- "Heart"
+tissue_freq_GTEx$Tissue[grep("Kidney", tissue_freq_GTEx$Tissue)] <- "Kidney"
+
+tissue_freq_TCGA$Tissue[tissue_freq_TCGA$Tissue == "Brain"] <- "Central nervous system"
+
+
+tissue_freq_sra <- aggregate(tissue_freq_sra$nSamples, by=list(tissue_freq_sra$Tissue), FUN=sum)
+colnames(tissue_freq_sra) <- c("Tissue", "nSamples")
+
+tissue_freq_GTEx <- aggregate(tissue_freq_GTEx$nSamples, by=list(tissue_freq_GTEx$Tissue), FUN=sum)
+colnames(tissue_freq_GTEx) <- c("Tissue", "nSamples")
+
+tissue_freq_sra <- tissue_freq_sra[order(tissue_freq_sra$nSamples, decreasing = T), ]
+tissue_freq_TCGA <- tissue_freq_TCGA[order(tissue_freq_TCGA$nSamples, decreasing = T), ]
+tissue_freq_GTEx <- tissue_freq_GTEx[order(tissue_freq_GTEx$nSamples, decreasing = T), ]
+
+tissue_freq_GTEx$Source <- "GTEx"
+tissue_freq_sra$Source <- "SRA"
+tissue_freq_TCGA$Source <- "TCGA"
+
+tissue_freq <- rbind(tissue_freq_GTEx, tissue_freq_sra, tissue_freq_TCGA)
+tissue_freq <- aggregate(tissue_freq$nSamples, by = list(tissue_freq$Tissue), FUN = sum)
+
+tissue_freq <- tissue_freq[order(tissue_freq$x, decreasing = T), ]
+top10_tissues <- tissue_freq$Group.1[1:10]
+
+top10_GTEx <- tissue_freq_GTEx[tissue_freq_GTEx$Tissue %in% top10_tissues, ]
+top10_TCGA <- tissue_freq_TCGA[tissue_freq_TCGA$Tissue %in% top10_tissues, ]
+top10_sra <- tissue_freq_sra[tissue_freq_sra$Tissue %in% top10_tissues, ]
+
+top10_GTEx <- rbind(top10_GTEx, data.frame("Tissue" = "Other", 
+                                           "nSamples" = sum(tissue_freq_GTEx$nSamples[!tissue_freq_GTEx$Tissue %in% top10_tissues]), 
+                                           "Source" = "GTEx"))
+
+top10_sra <- rbind(top10_sra, data.frame("Tissue" = "Other", 
+                                           "nSamples" = sum(tissue_freq_sra$nSamples[!tissue_freq_sra$Tissue %in% top10_tissues]), 
+                                           "Source" = "SRA"))
+
+top10_TCGA <- rbind(top10_TCGA, data.frame("Tissue" = "Other", 
+                                         "nSamples" = sum(tissue_freq_TCGA$nSamples[!tissue_freq_TCGA$Tissue %in% top10_tissues]), 
+                                         "Source" = "TCGA"))
+
+
+top10_tissues_df <- rbind(top10_sra, top10_GTEx, top10_TCGA)
+top10_tissues_df$Tissue[top10_tissues_df$Tissue == "Pbmcs"] <- "PBMCs"
+top10_tissues[top10_tissues == "Pbmcs"] <- "PBMCs"
+top10_tissues_df$Tissue <- factor(top10_tissues_df$Tissue, levels = c("Other", top10_tissues))
+
+p1_b <- ggplot(top10_tissues_df, aes(x = Tissue, y = nSamples, fill = Source)) + geom_bar(stat = "identity", position = "stack") + ylab("Number of samples") +xlab("")+
+  theme_classic() + coord_flip() + scale_fill_brewer(palette = "Dark2") + ggtitle("Most prevalent tissues\nin GTEx, SRA, TCGA") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                                                                                                       legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                                                                                                       axis.title = element_text(size = 12, face = "bold"))
+
+p1_b
+
+
+```
+
+### Plot Fig 1 D 
+
+Identify non-cancerous diseases present in SRA and describe the sample size of each. 
+
+```{r}
+# Read in disease annotations in sra
+manual_annotation <- read.delim(paste0(homeDir, "data/manual_annotations.tsv"))
+manual_annotation <- manual_annotation[manual_annotation$sample %in% metadata$sample, ]
+manual_annotation <- manual_annotation[manual_annotation$cancer %in% c("normal", "none"), ]
+disease_freq_sra <- data.frame(table(manual_annotation$disease.category))
+colnames(disease_freq_sra) <- c("Disease", "nSamples")
+disease_freq_sra$Disease <- str_to_sentence(disease_freq_sra$Disease)
+disease_freq_sra <- disease_freq_sra[!disease_freq_sra$Disease == "Normal", ]
+disease_freq_sra <- disease_freq_sra[order(disease_freq_sra$nSamples, decreasing = T), ]
+disease_freq_sra <- disease_freq_sra[!disease_freq_sra$Disease == "Unknown", ]
+disease_freq_sra$Disease[disease_freq_sra$Disease == "Active tb"] <- "Active TB"
+disease_freq_sra$Disease[disease_freq_sra$Disease == "Latent tb"] <- "Latent TB"
+
+disease_top20 <- disease_freq_sra[1:23, ]
+disease_top20 <- disease_top20[!disease_top20$Disease == "Induced from erythroblasts", ]
+disease_top20 <- disease_top20[!disease_top20$Disease == "Ebv transformed", ]
+disease_top20 <- aggregate(disease_top20$nSamples, by=list(disease_top20$Disease), FUN=sum)
+disease_top20 <- disease_top20[order(disease_top20$x, decreasing = F), ]
+colnames(disease_top20) <- c("Disease", "nSamples")
+disease_top20$Disease[disease_top20$Disease == "Common variable immunodeficiency (cvid)"] <- "Common Variable Immunodeficiency (CVID)"
+disease_top20$Disease <- factor(disease_top20$Disease, levels = disease_top20$Disease)
+
+p1_c <- ggplot(disease_top20, aes(x = Disease, y = nSamples)) + geom_bar(stat = "identity", fill = "#08538c") + ylab("Number of samples") + xlab("") + 
+  theme_classic() + coord_flip() + ggtitle("Most prevalent diseases\nin SRA excluding cancer")  + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                                                      legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                                                      axis.title = element_text(size = 12, face = "bold"))
+
+p1_c
+```
+
+### Plot Fig 1 E
+
+Read in the computed tSNE dimensionality reduction on xcell deconvolution scores to observe sample clustering by tissue category
+
+```{r}
+metadata_cancer <- metadata[metadata$cancer == "cancer", ]
+metadata_normal <- metadata[metadata$cancer == "none", ]
+metadata_normal <- metadata_normal[!metadata_normal$tissue.category == "unknown", ]
+metadata_cancer <- metadata_cancer[!metadata_cancer$tissue.category == "unknown", ]
+
+counts <- readRDS(paste0(homeDir, "/data/all_counts.rds"))
+counts <- t(counts)
+gtex_normal <- counts[rownames(counts) %in% metadata_normal$sample[metadata_normal$source == "GTEx"], ]
+gtex_cancer <- counts[rownames(counts) %in% metadata_cancer$sample[metadata_cancer$source == "GTEx"], ]
+tcga_normal <- counts[rownames(counts) %in% metadata_normal$sample[metadata_normal$source == "TCGA"], ]
+tcga_cancer <- counts[rownames(counts) %in% metadata_cancer$sample[metadata_cancer$source == "TCGA"], ]
+sra_normal <- counts[rownames(counts) %in% metadata_normal$sample[metadata_normal$source == "sra"], ]
+sra_cancer <- counts[rownames(counts) %in% metadata_cancer$sample[metadata_cancer$source == "sra"], ]
+
+all_normal <- rbind(gtex_normal, tcga_normal, sra_normal)
+all_cancer <- rbind(gtex_cancer, tcga_cancer, sra_cancer)
+
+metadata_normal <- metadata_normal[match(rownames(all_normal), metadata_normal$sample), ]
+metadata_cancer <- metadata_cancer[match(rownames(all_cancer), metadata_cancer$sample), ]
+
+metadata_normal$tissue.category[metadata_normal$tissue.category == "smooth vessel"] <- "smooth muscle"
+metadata_normal$tissue.category[metadata_normal$tissue.category == "trophoblast"] <- "trophoblasts"
+metadata_normal$tissue.category[metadata_normal$tissue.category == "adipocyte"] <- "adipocytes"
+tissue_palette <- read.csv(paste0(homeDir, "data/colors_clustering.csv"), header = FALSE)
+plt.source.cols <- metadata_normal$source
+plt.source.cols[plt.source.cols == "sra"] <- "green"
+plt.source.cols[plt.source.cols == "GTEx"] <- "blue"
+plt.source.cols[plt.source.cols == "TCGA"] <- "red"
+plt.colors.tissues <- c()
+tissue <- c()
+for(i in c(1:dim(metadata_normal)[1])){
+  #print(metadata_normal$tissue.category[i])
+  plt.colors.tissues[i] <- tissue_palette$V2[tissue_palette$V1 == metadata_normal$tissue.category[i]]
+  tissue[i] <- tissue_palette$V3[tissue_palette$V1 == metadata_normal$tissue.category[i]]
+}
+tissue_palette_category <- tissue_palette
+tissue_palette_category$V1 <- NULL
+tissue_palette_category <- distinct(tissue_palette_category, V3, .keep_all = TRUE)
+rownames(tissue_palette_category) <- tissue_palette_category$V3
+
+metadata_normal$colors <- plt.colors.tissues
+metadata_normal$tissue <- tissue
+
+plt.colors.category <- tissue_palette_category[metadata_normal$tissue, ]
+plt.colors.category <- plt.colors.category$V2
+plt.colors.category[metadata_normal$tissue == "Central nervous system"] <- "#EEEE00"
+
+xcell_flag <- TRUE
+if(xcell_flag){
+  counts.xcellScore <- readRDS(paste0(homeDir,"data/xcellScores.rds"))
+} else{
+  source(paste0(homeDir, "src/xcell_sort.R"))
+  metadata <- readRDS(paste0(homeDir, "data/all_metadata.rds"))
+  euc.dist <- function(x1, x2) sqrt(sum((x1 - x2) ^ 2))
+  geneData <- readRDS(paste0(homeDir, "data/geneData.rds"))
+  geneData <- geneData[geneData$gene_id %in% rownames(counts), ]
+  geneData <- geneData[match(rownames(counts), geneData$gene_id), ]
+  rownames(counts) <- geneData$gene_name
+  counts.xcellScore <- xCellAnalysis(counts)
+  saveRDS(counts.xcellScore, paste0(homeDir, "data/xcellScores.rds"))
+}
+
+normal_xcell_scores <- counts.xcellScore[ ,metadata_normal$sample]
+normal_xcell_scores <- t(normal_xcell_scores)
+set.seed(100)
+
+tsne_computed <- 1
+if(tsne_computed == 1){
+  tsne_normal_xcell <- readRDS(paste0(homeDir, "data/tsne_normal_xcell.rds"))
+}else{
+  tsne_normal_xcell <- Rtsne(normal_xcell_scores, verbose = TRUE, check_duplicates = FALSE)
+  saveRDS(tsne_normal_xcell, paste0(homeDir, "data/tsne_normal_xcell.rds"))
+}
+
+normal_xcell_tsne_df <- tsne_normal_xcell$Y
+normal_xcell_tsne_df <- data.frame(normal_xcell_tsne_df)
+colnames(normal_xcell_tsne_df) <- c("D1", "D2")
+
+normal_xcell_tsne_df$tissue <- metadata_normal$tissue
+normal_xcell_tsne_df$tissue_subtype <- metadata_normal$tissue.category
+normal_xcell_tsne_df$col_tissue <- plt.colors.category
+normal_xcell_tsne_df$col_subtype <- metadata_normal$colors
+normal_xcell_tsne_df$study <- metadata_normal$study
+normal_xcell_tsne_df$sample_id <- metadata_normal$sample
+normal_xcell_tsne_df$tissue[normal_xcell_tsne_df$tissue == "salivary gland"] <- "Salivary gland"
+normal_xcell_tsne_df$tissue[normal_xcell_tsne_df$tissue == "head and neck"] <- "Head and neck"
+colnames(normal_xcell_tsne_df) <- c("D1", "D2", "Tissue", "Tissue subtype", "col_tissue", "col_subtype", "Study")
+normal_xcell_tsne_df$Tissue[normal_xcell_tsne_df$Tissue == "Prostate"] <- "Prostrate"
+normal_xcell_tsne_df$Tissue <- as.factor(normal_xcell_tsne_df$Tissue)
+tissue_palette_category <- tissue_palette_category[order(tissue_palette_category$V3), ]
+
+p1 <- ggplot(normal_xcell_tsne_df, aes(x = D1, y = D2, color = Tissue)) + 
+  geom_point(alpha = 0.1) + 
+  scale_colour_manual(values = tissue_palette_category$V2) + 
+  theme_classic() + ggtitle("t-SNE Visualization of Cell Type Enrichment Scores\nof 63193 Non-cancerous Samples representing 48 Tissue Contexts") + 
+  guides(colour = guide_legend(ncol = 3, override.aes = list(alpha = 1, size = 3))) + xlim(c(-50, 50)) + ylim(c(-50, 50)) + 
+  theme(plot.title = element_text(face="bold", size = 10), axis.text = element_text(size = 8, face = "bold"), 
+        legend.text = element_text(size = 8, face = "bold"), legend.title = element_text(size = 8, face = "bold"), 
+        axis.title = element_text(size = 8, face = "bold"))
+p1
+```
+
+### Plot Supp. Fig 1
+
+Visualize outliers in each tissue cluster
+
+```{r}
+outlier_annot <- readRDS(paste0(homeDir, "data/all_samples_outlier_detection.rds"))
+p_list <- list()
+for(i in unique(outlier_annot$tissue)){
+  df <- outlier_annot[outlier_annot$tissue == i, ]
+  df$z <- df$D1_z & df$D2_z
+  df$mad <- df$D1_mad & df$D2_mad
+  df$tukey <- df$D1_tukey & df$D2_tukey
+  df$score <- rowSums(df[ ,15:20])
+  df$Outlier <- df$score < 4
+  p_list[[i]] <- ggplot(df, aes(x = D1, y = D2, col = Outlier)) + geom_point(alpha = 0.5) + 
+                 xlim(c(-50, 50)) + ylim(c(-50, 50)) + theme_classic() +
+                 ggtitle(i) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +                                             # Moving ggplot2 legend to the bottom
+    theme(plot.title = element_text(face="bold", size = 10), axis.text = element_text(size = 8, face = "bold"), 
+          legend.text = element_text(size = 10, face = "bold"), legend.title = element_text(size = 10, face = "bold"), 
+          axis.title = element_text(size = 10, face = "bold"), legend.position = "bottom")
+}
+p_list[[20]] <- p_list[[20]] + ggtitle("Prostate")
+p_list[[6]] <- p_list[[6]] + ggtitle("CNS")
+p_list[[21]] <- p_list[[21]] + ggtitle("Musculoskeletal")
+
+
+legend_outlier <- get_legend(p_list[[1]])
+p_list <- lapply(p_list, function(p){
+  p + theme(legend.position="none")
+})
+
+
+tissue_palette_category2 <- tissue_palette_category[tissue_palette_category$V3 %in% names(p_list), ]
+tissue_palette_category2 <- tissue_palette_category2[order(tissue_palette_category2$V3), ]
+colnames(outlier_annot)[3] <- "Tissue"
+outlier_annot$Tissue <- as.factor(outlier_annot$Tissue)
+
+p2 <- ggplot(outlier_annot, aes(x = D1, y = D2, color = Tissue)) + 
+  geom_point(alpha = 0.1) + 
+  scale_colour_manual(values = tissue_palette_category2$V2) + 
+  theme_classic() + ggtitle("xCell deconvolution scores (tSNE) after filtering") +
+  guides(colour = guide_legend(ncol = 2, override.aes = list(alpha = 1, size = 5))) + xlim(c(-50, 50)) + ylim(c(-50, 50)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+lay <- rbind(c(2,3,4,5),
+             c(6,7,8,9),
+             c(10,11,12,13),
+             c(14,15,16,17),
+             c(18,19,20,21),
+             c(22,23,24,25),
+             c(1,1,1,1))
+
+p_list[[6]] <- p_list[[6]] + ggtitle("CNS")
+p3 <- grid.arrange(legend_outlier, p_list[[1]], p_list[[2]], p_list[[3]], p_list[[4]], 
+                p_list[[5]], p_list[[6]], p_list[[7]], p_list[[8]],
+                p_list[[9]], p_list[[10]], p_list[[11]], p_list[[12]], ncol = 4, 
+                layout_matrix = lay[-c(4, 5, 6), ], heights=c(4,4,4,0.5))
+
+p4 <- grid.arrange(legend_outlier, p_list[[13]], p_list[[14]], p_list[[15]], p_list[[16]],
+                p_list[[17]], p_list[[18]], p_list[[19]], p_list[[20]],
+                p_list[[21]], p_list[[22]], p_list[[23]], p_list[[24]], ncol = 4, layout_matrix = lay[-c(1, 2, 3), ], 
+                heights=c(4,4,4,0.5))
+```
+
+### Plot Supp. Fig 2
+
+Visualize outliers in each cluster related to immune samples
+
+```{r}
+library(viridis)
+df <- readRDS(paste0(homeDir, "data/immune_tSNE.rds"))
+df$cluster <- as.factor(df$cluster)
+colnames(df)[9] <- "Cluster"
+p1 <- ggplot(df, aes(x = D1, y = D2, color = Cluster)) + geom_point() + 
+       theme_classic() + ggtitle("Clustering on immune cells") +
+       theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+counts_cluster_1 <- data.frame(table(df$tissue_subtype[df$Cluster == 1]))
+counts_cluster_1$cluster <- "1"
+
+counts_cluster_2 <- data.frame(table(df$tissue_subtype[df$Cluster == 2]))
+counts_cluster_2$cluster <- "2"
+
+counts_cluster_3 <- data.frame(table(df$tissue_subtype[df$Cluster == 3]))
+counts_cluster_3$cluster <- "3"
+
+counts_cluster <- rbind(counts_cluster_1, counts_cluster_2, counts_cluster_3)
+colnames(counts_cluster) <- c("Cell_type", "Number_of_samples", "Cluster")
+counts_cluster$Cell_type <- as.character(counts_cluster$Cell_type)
+counts_cluster$Cell_type[counts_cluster$Cell_type == "b cells"] <- "B cells"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "cells ebv-transformed lymphocytes"] <- "Cells EBV-transformed lymphocytes"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "dendritic cells"] <- "Dendritic cells"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "granulocytes"] <- "Granulocytes"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "lymphoblastoid"] <- "Lymphoblastoid"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "lymphoblastoid cell line"] <- "Lymphoblastoid cell line"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "lymphoid progenitors"] <- "Lymphoid progenitors"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "macrophage and intestinal organoid"] <- "Macrophage and intestinal organoid"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "macrophages"] <- "Macrophages"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "microglia"] <- "Microglia"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "monocytes"] <- "Monocytes"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "myeloid"] <- "Myeloid"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "neutrophils"] <- "Neutrophils"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "nk cells"] <- "NK cells"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "pbmcs"] <- "PBMCs"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "t cells"] <- "T cells"
+counts_cluster$Cell_type[counts_cluster$Cell_type == "t cells (skin)"] <- "T cells (skin)"
+counts_cluster$Cell_type <- as.factor(counts_cluster$Cell_type)
+
+p2 <- ggplot(counts_cluster, aes(fill = Cell_type, y = Number_of_samples, x = Cluster)) + 
+  geom_bar(position="stack", stat="identity") + theme_classic() + 
+  xlab("Cluster") + ylab("Number of samples") + ggtitle("Cell-type prevalence in each cluster") + 
+  scale_fill_viridis(discrete = T) + 
+  guides(fill=guide_legend(ncol=2, title="Cell type")) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+p1
+p2
+immune_samples_outlier <- readRDS(paste0(homeDir, "data/immune_samples_outlier_detection.rds"))
+immune_samples_outlier$z <- immune_samples_outlier$D1_z & immune_samples_outlier$D2_z
+immune_samples_outlier$mad <- immune_samples_outlier$D1_mad & immune_samples_outlier$D2_mad
+immune_samples_outlier$tukey <- immune_samples_outlier$D1_tukey & immune_samples_outlier$D2_tukey
+immune_samples_outlier$score <- rowSums(immune_samples_outlier[ , c("z", "mad", "tukey", "maha_z", "maha_mad", "maha_tukey")])
+immune_samples_outlier$Outlier <- immune_samples_outlier$score < 4
+
+p_list <- list()
+for(i in unique(immune_samples_outlier$cluster)){
+  df <- immune_samples_outlier[immune_samples_outlier$cluster == i, ]
+  p_list[[i]] <- ggplot(df, aes(x = D1, y = D2, color = Outlier)) + geom_point(alpha = 0.5) + theme_classic() + xlim(c(-50, 50)) + ylim(c(-50, 50)) + 
+    guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+    theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+          legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+          axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+}
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+legend_outlier <- get_legend(p_list[[1]])
+p_list <- lapply(p_list, function(p){
+  p + theme(legend.position="none")
+})
+
+p_list[[1]] <- p_list[[1]] + ggtitle("Myeloid cells") 
+p_list[[2]] <- p_list[[2]] + ggtitle("PBMCs and T cells")
+p_list[[3]] <- p_list[[3]] + ggtitle("B cells")
+
+p_list[[1]]
+p_list[[2]]
+p_list[[3]]
+
+
+```
+
