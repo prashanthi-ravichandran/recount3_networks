@@ -1,0 +1,621 @@
+---
+title: "Modeling confounders using PCA"
+author: "Prashanthi Ravichandran"
+output: html_document
+date: '2023-11-08'
+---
+
+```{r setup, include=FALSE}
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This script can be used to generate supplementary figures 3 and 4, which explore the drivers of variation in observed gene expression. 
+
+```{r}
+library(Rtsne)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(gridExtra)
+library(RColorBrewer)
+library(irlba)
+library(stringr)
+library(SummarizedExperiment)
+
+# Change the the home directory of the cloned repo
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+```
+
+## Process metadata
+
+As before, process metadata for easy visualization
+
+```{r}
+# Read metadata
+metadata <- readRDS(paste0(homeDir, "data/all_metadata.rds"))
+metadata$tissue.category[metadata$tissue.category == "Whole_Blood"] <- "blood"
+metadata$tissue.category <- gsub("_", " ", metadata$tissue.category)
+metadata$tissue.category <- tolower(metadata$tissue.category)
+metadata$tissue.category[metadata$tissue.category == "brain cerebellum"] <- "cerebellum"
+metadata$tissue.category[metadata$tissue.category == "skeletal muscle "] <- "skeletal muscle"
+metadata$tissue.category[metadata$tissue.category == "muscle skeletal"] <- "skeletal muscle"
+metadata$tissue.category[metadata$tissue.category == "ipsc"] <- "ipscs"
+metadata$tissue.category[metadata$tissue.category == "prostate"] <- "prostrate"
+metadata$source <- metadata$study
+metadata$source[grep("DRP", metadata$source)] <- "sra"
+metadata$source[grep("SRP", metadata$source)] <- "sra"
+metadata$source[grep("ERP", metadata$source)] <- "sra"
+metadata$source[metadata$source != "sra" & metadata$source != "GTEx"] <- "TCGA"
+
+metadata$cancer[metadata$cancer == "cancer "] <- "cancer"
+metadata$cancer[metadata$cancer == ""] <- "none"
+metadata$cancer[metadata$tissue.category == "cells leukemia cell line cml"] <- "cancer"
+metadata <- metadata[!metadata$tissue.category == "cells leukemia cell line cml", ]
+
+```
+
+
+## Examine the PCs computed across all samples
+
+```{r}
+counts <- readRDS(paste0(homeDir, "data/all_counts.rds"))
+PC_computed <- TRUE
+if(PC_computed){
+  L <- readRDS(paste0(homeDir, "data/confounder_modeling/all_samples/L_expr.rds"))
+}else{
+  counts <- counts[ ,colnames(counts) %in% metadata$sample]
+  scaled_counts <- scale(t(counts))
+  L <- irlba(scaled_counts, 50)
+  saveRDS(L, paste0(homeDir, "/data/confounder_modeling/all_samples/L_expr.rds"))
+}
+processedSampleLoadings <- TRUE
+if(processedSampleLoadings){
+  sample_loadings <- readRDS(paste0(homeDir, "/data/confounder_modeling/all_samples/sample_loadings.rds"))
+}else{
+  sample_loadings <- L[["u"]][ ,1:10]
+  colnames(sample_loadings) <- paste0("PC", c(1:dim(sample_loadings)[2]))
+  sample_loadings <- data.frame(sample_loadings)
+  sample_loadings$Source <- metadata$source
+  sample_loadings$Source[sample_loadings$Source == "sra"] <- "SRA"
+  sample_loadings$Cancer_status <- metadata$cancer
+  sample_loadings$Cancer_status[sample_loadings$Cancer_status == "unknown"] <- "Unknown"
+  sample_loadings$Cancer_status[sample_loadings$Cancer_status == "cancer"] <- "Cancerous"
+  sample_loadings$Cancer_status[sample_loadings$Cancer_status == "none"] <- "Non-cancerous"
+  sample_loadings$Tissue <- metadata$tissue.category
+  sample_loadings$Study <- metadata$study
+  sample_loadings$Source <- as.factor(sample_loadings$Source)
+  sample_loadings$Cancer_status <- as.factor(sample_loadings$Cancer_status)
+  sample_loadings$Tissue <- as.factor(sample_loadings$Tissue)
+  sample_loadings$Study <- as.factor(sample_loadings$Study)
+  saveRDS(sample_loadings, paste0(homeDir, "/data/confounder_modeling/all_samples/sample_loadings.rds"))
+}
+anova_run <- TRUE
+if(anova_run){
+  R_squared_all <- readRDS(paste0(homeDir, "/data/confounder_modeling/all_samples/anova.rds"))
+  PVE <- readRDS(paste0(homeDir, "/data/confounder_modeling/all_samples/PVE.rds"))
+}else{
+  PVE <- data.frame("Percent variance explained" = (L$d^2/sum(L$d^2))*100, 
+                  "Principal components" = c(1:length(L$d)))
+  saveRDS(PVE, paste0(homeDir, "/data/confounder_modeling/all_samples/PVE.rds"))
+  
+  lm_simple <- list()
+  lm_simple[[1]] <- lm(PC1 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[2]] <- lm(PC2 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[3]] <- lm(PC3 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[4]] <- lm(PC4 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[5]] <- lm(PC5 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[6]] <- lm(PC6 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[7]] <- lm(PC7 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[8]] <- lm(PC8 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[9]] <- lm(PC9 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+  lm_simple[[10]] <- lm(PC10 ~ Source + Cancer_status + Tissue + Study, data = sample_loadings)
+
+  res_all <- lapply(lm_simple, function(ilm){
+    anova(ilm)
+  })
+
+  R_squared_all <- lapply(res_all, function(ires){
+    r2 <- ires$`Sum Sq`/sum(ires$`Sum Sq`)
+    r2[1:4]
+  })
+
+  p_all <- lapply(res_all, function(ires){
+    ires$`Pr(>F)`[1:4]
+  })
+
+  R_squared_all <- do.call(rbind, R_squared_all)
+  colnames(R_squared_all) <- c("Source", "Cancer_status", "Tissue", "Study")
+  R_squared_all <- data.frame(R_squared_all)
+  R_squared_all$PC <- paste0("PC", c(1:10))
+  R_squared_all$Total_variance_explained <- R_squared_all$Source + R_squared_all$Cancer_status + R_squared_all$Tissue + R_squared_all$Study
+  R_squared_all <- reshape2::melt(R_squared_all, id.vars = "PC")
+  R_squared_all$variable <- as.character(R_squared_all$variable)
+  R_squared_all$variable[R_squared_all$variable == "Cancer_status"] <- "Cancer\nstatus"
+  R_squared_all$variable[R_squared_all$variable == "Total_variance_explained"] <- "Total\nexplained\nvariance"
+  R_squared_all$value <- R_squared_all$value*100
+
+  p_all <- do.call(rbind, p_all)
+  colnames(p_all) <- c("Source", "Cancer_status", "Tissue", "Study")
+  p_all <- data.frame(p_all)
+  p_all$PC <- paste0("PC", c(1:10))
+  p_all <- reshape2::melt(p_all, id.vars = "PC")
+  p_all$variable <- as.character(p_all$variable)
+  p_all$variable[p_all$variable == "Cancer_status"] <- "Cancer status"
+  p_all$variable[p_all$variable == "Total_variance_explained"] <- "Total\nexplained\nvariance"
+  p_all$symbol <- rep("", 10)
+  p_all$symbol[p_all$value <= 0.001] <- "***"
+  p_all$symbol[p_all$value <= 0.01 & p_all$value > 0.001] <- "**"
+  p_all$symbol[p_all$value <= 0.05 & p_all$value > 0.01] <- "*"
+  R_squared_all$symbol <- c(p_all$symbol, rep("", 10))
+  saveRDS(R_squared_all, paste0(homeDir, "/data/confounder_modeling/all_samples/anova.rds"))
+  
+}
+
+
+p <- ggplot(aes(x=variable, y=PC, fill=value), data=R_squared_all)
+p2_a <- p + geom_tile() + scale_fill_gradient(low="white", high="#416A1D") + 
+  labs(y=NULL, x=NULL, fill="R-squared") + geom_text(aes(label = paste(symbol)), size = 6) +
+  theme_classic() + theme(axis.line = element_blank(), axis.ticks.length = unit(0, "lines")) +
+  scale_y_discrete(limits = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")) + 
+  ggtitle("ANOVA of top 10 global expression PCs") +   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                             legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                             axis.title = element_text(size = 12, face = "bold"))
+
+plt.cancer.cols <- metadata$cancer
+plt.cancer.cols[plt.cancer.cols == "cancer"] <- "red"
+plt.cancer.cols[plt.cancer.cols == "none"] <- "blue"
+plt.cancer.cols[plt.cancer.cols == "unknown"] <- "black"
+
+
+ps2_a <- ggplot(PVE[1:20, ], aes(Principal.components, Percent.variance.explained)) + 
+  geom_line() +
+  geom_point(size=5, colour="white") + theme_classic() + ggtitle("Scree Plot of Top 30 Expression PCs\nof All Samples") +
+  geom_point(size=2) + xlab("Principal Components") + ylab("Percent variance explained") +   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                                                                   legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                                                                   axis.title = element_text(size = 12, face = "bold"))
+
+
+ps2_b <- ggplot(sample_loadings, aes(x = PC1, y = PC2, colour = Source)) + geom_point(alpha = 0.5) + 
+  scale_color_manual(values = c("#A6D854", "#FDB462", "#BEAED4")) +
+  theme_classic() + ggtitle("All Samples colored by data source") +
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+
+ps2_c <- ggplot(sample_loadings, aes(x = PC1, y = PC2, colour = Cancer_status)) + geom_point(alpha = 0.5) + 
+  scale_color_manual(values = c("#FBB4AE", "#B3CDE3", "grey")) +
+  theme_classic() + ggtitle("All Samples colored by cancer status") +
+  guides(colour = guide_legend(title = "Cancer status", override.aes = list(alpha = 1)))+   
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.title = element_text(size = 12, face = "bold"))
+
+ps2_d <- ggplot(data=sample_loadings, aes(PC1, PC2)) + 
+  geom_point(data=function(x){x[!x$Tissue %in% c("brain", "skin", "adipose", "blood"), ]}, alpha=0.08, aes(color = "Other")) +
+  geom_point(data=function(x){x[x$Tissue == "blood", ]}, aes(color = "Blood")) +
+  geom_point(data=function(x){x[x$Tissue == "brain", ]}, aes(color = "Brain")) +
+  geom_point(data=function(x){x[x$Tissue == "skin", ]}, aes(color = "Skin")) + 
+  geom_point(data=function(x){x[x$Tissue == "adipose", ]}, aes(color = "Adipose")) + 
+  scale_color_manual(name = "Tissue", values = c("Blood" = "#FF1493", "Brain" = "yellow", "Skin" = "blue", "Adipose" = "orange", "Other" = "grey")) +
+  ggtitle("All Samples colored by select tissues") + theme_classic() +   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                                           legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.title = element_text(size = 12, face = "bold"))
+
+```
+
+```{r, echo=FALSE}
+ps2_a
+```
+
+
+```{r, echo=FALSE}
+ps2_b
+```
+
+
+```{r, echo=FALSE}
+ps2_c
+```
+
+
+```{r, echo=FALSE}
+ps2_d
+```
+
+
+```{r, echo=FALSE}
+p2_a
+```
+
+## Examine the PCs computed across blood samples
+
+```{r}
+metadata_blood <- metadata[metadata$tissue.category == "blood", ]
+blood_counts <- counts[ ,colnames(counts) %in% metadata_blood$sample]
+blood_PCs_computed <- TRUE
+if(blood_PCs_computed){
+  L_blood <- readRDS(paste0(homeDir, "data/confounder_modeling/blood/L_blood.rds"))
+}else{
+  blood_counts <- scale(t(blood_counts))
+  L_blood <- irlba(blood_counts, 50)
+  saveRDS(L_blood, paste0(homeDir, "data/confounder_modeling/blood/L_blood.rds"))
+}
+
+loadings_computed <- TRUE
+if(loadings_computed){
+    blood_loadings <- readRDS(paste0(homeDir, "data/confounder_modeling/blood/blood_loadings.rds"))
+  PVE_blood <- readRDS(paste0(homeDir, "data/confounder_modeling/blood/PVE.rds"))
+}else{
+  blood_loadings <- L_blood[["u"]]
+  colnames(blood_loadings) <- paste0("PC", c(1:dim(blood_loadings)[2]))
+  blood_loadings <- data.frame(blood_loadings)
+  blood_loadings$Source <- metadata_blood$source
+  blood_loadings$Cancer_status <- metadata_blood$cancer
+  blood_loadings$Tissue <- metadata_blood$tissue.category
+  blood_loadings$Study <- metadata_blood$study
+  blood_loadings$Study <- metadata_blood$study
+  blood_loadings$Source[blood_loadings$Source == "sra"] <- "SRA"
+  blood_loadings$Cancer_status[blood_loadings$Cancer_status == "cancer"] <- "Cancerous"
+  blood_loadings$Cancer_status[blood_loadings$Cancer_status == "none"] <- "Non-cancerous"
+  blood_loadings$Source <- as.factor(blood_loadings$Source)
+  blood_loadings$Cancer_status <- as.factor(blood_loadings$Cancer_status)
+  blood_loadings$Tissue <- as.factor(blood_loadings$Tissue)
+  blood_loadings$Study <- as.factor(blood_loadings$Study)
+
+  manual_annotations <- read.delim(paste0(homeDir, "data/manual_annotations.tsv"))
+  manual_annotations_blood <- manual_annotations[manual_annotations$tissue.category == "blood", ]
+  diseases <- c()
+  for(i in c(1:dim(blood_loadings)[1])){
+    if(metadata_blood$study[i] == "GTEx"){
+      diseases[i] <- "normal"
+    }else{
+      df <- annotated_unique_samples[annotated_unique_samples$study == metadata_blood$study[i], ]
+      df <- df[df$tissue.category == metadata_blood$tissue.category[i], ]
+      df <- df[df$cancer == metadata_blood$cancer[i], ]
+      diseases[i] <- df$disease.category}
+  }
+
+  diseases <- str_to_lower(diseases)
+  diseases <- str_to_sentence(diseases)
+  diseases[diseases == "Acute myeloid leukemia cell line"] <- "Acute myeloid leukemia"
+  diseases[diseases == "Acute myleoid leukemia"] <- "Acute myeloid leukemia"
+  diseases[diseases == "Type i diabetes"] <- "Type 1 diabetes"
+  diseases[diseases == "Mulitple myeloma"] <- "Multiple myeloma"
+  diseases[diseases == "Systemic lupus erythematosus"] <- "Lupus"
+  diseases[diseases == "Als"] <- "ALS"
+  diseases[diseases == "Normal"] <- "None"
+  diseases[diseases == "Latent tb"] <- "Latent TB"
+  diseases[diseases == "Latent tuberculosis"] <- "Latent TB"
+  diseases[diseases == "Hiv"] <- "HIV"
+  diseases[diseases == "Definitely curable tuberculosis"] <- "Definitely curable TB"
+  diseases[diseases == "Ebv transformed cell line"] <- "EBV transformed cell line"
+  blood_loadings$Disease <- diseases
+  blood_loadings$Disease <- as.factor(blood_loadings$Disease)
+
+  PVE_blood <- data.frame("Percent variance explained" = (L_blood$d^2/sum(L_blood$d^2))*100, 
+                        "Principal components" = c(1:length(L_blood$d)))
+  saveRDS(blood_loadings, paste0(homeDir, "data/confounder_modeling/blood/blood_loadings.rds"))
+  saveRDS(PVE_blood, paste0(homeDir, "data/confounder_modeling/blood/PVE.rds.rds"))
+}
+
+
+ps2_e <- ggplot(PVE_blood[1:30, ], aes(Principal.components, Percent.variance.explained)) + 
+  geom_line() +
+  geom_point(size=5, colour="white") + theme_classic() + ggtitle("Scree Plot of Top 30\nBlood Expression PCs") +
+  geom_point(size=2) + xlab("Principal Components") + ylab("Percent variance explained") + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+run_anova_blood <- TRUE
+if(run_anova_blood){
+  R_squared_blood <- readRDS(paste0(homeDir, "data/confounder_modeling/blood/anova_blood.rds"))
+}else{
+  lm_blood <- list()
+  lm_blood[[1]] <- lm(PC1 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[2]] <- lm(PC2 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[3]] <- lm(PC3 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[4]] <- lm(PC4 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[5]] <- lm(PC5 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[6]] <- lm(PC6 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+  lm_blood[[7]] <- lm(PC7 ~ Source + Cancer_status + Study + Disease, data = blood_loadings)
+
+  res_blood <- lapply(lm_blood, function(ilm){
+    anova(ilm)
+  })
+
+  R_squared_blood <- lapply(res_blood, function(ires){
+    r2 <- ires$`Sum Sq`/sum(ires$`Sum Sq`)
+    r2[1:4]
+  })
+
+  p_blood <- lapply(res_blood, function(ires){
+    ires$`Pr(>F)`[1:4]
+  })
+
+  R_squared_blood <- do.call(rbind, R_squared_blood)
+  colnames(R_squared_blood) <- c("Source", "Cancer_status", "Study", "Disease")
+  R_squared_blood <- data.frame(R_squared_blood)
+  R_squared_blood$PC <- paste0("PC", c(1:7))
+  R_squared_blood$Total_variance_explained <- R_squared_blood$Source + R_squared_blood$Cancer_status + R_squared_blood$Study + R_squared_blood$Disease
+  R_squared_blood <- reshape2::melt(R_squared_blood, id.vars = "PC")
+  R_squared_blood$variable <- as.character(R_squared_blood$variable)
+  R_squared_blood$variable[R_squared_blood$variable == "Cancer_status"] <- "Cancer\nstatus"
+  R_squared_blood$variable[R_squared_blood$variable == "Total_variance_explained"] <- "Total\nexplained\nvariance"
+  R_squared_blood$value <- R_squared_blood$value*100
+
+  p_blood <- do.call(rbind, p_blood)
+  colnames(p_blood) <- c("Source", "Cancer_status", "Study", "Disease")
+  p_blood <- data.frame(p_blood)
+  p_blood$PC <- paste0("PC", c(1:7))
+  p_blood <- reshape2::melt(p_blood, id.vars = "PC")
+  p_blood$variable <- as.character(p_blood$variable)
+  p_blood$variable[p_blood$variable == "Cancer_status"] <- "Cancer\nstatus"
+  p_blood$symbol <- ""
+  p_blood$symbol[p_blood$value <= 0.001] <- "***"
+  p_blood$symbol[p_blood$value <= 0.01 & p_blood$value > 0.001] <- "**"
+  p_blood$symbol[p_blood$value <= 0.05 & p_blood$value > 0.01] <- "*"
+
+  R_squared_blood$symbol <- c(p_blood$symbol, rep("", 7))
+  saveRDS(R_squared_blood, paste0(homeDir, "data/confounder_modeling/blood/anova_blood.rds"))
+
+}
+
+p2_b <- ggplot(aes(x=variable, y=PC, fill=value), data=R_squared_blood) + geom_tile() + scale_fill_gradient(low="white", high="#416A1D") + 
+  labs(y=NULL, x=NULL, fill="R-squared") + geom_text(aes(label = symbol), size = 8) +
+  theme_classic() + theme(axis.line = element_blank(), axis.ticks.length = unit(0, "lines")) +
+  scale_y_discrete(limits = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7")) + 
+  ggtitle("ANOVA of top 7 expression PCs in Blood") + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_f <- ggplot(blood_loadings, aes(x = PC1, y = PC2, colour = Source)) + geom_point(alpha = 0.5) + 
+  scale_color_manual(values = c("#A6D854", "#FDB462", "#BEAED4")) +
+  theme_classic() + ggtitle("Samples colored by data source") +
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_g <- ggplot(data=blood_loadings, aes(PC1, PC2)) + 
+  geom_point(data=function(x){x[x$Cancer_status == "Non-cancerous", ]}, alpha=0.5, aes(color = "Non-cancerous")) +
+  geom_point(data=function(x){x[x$Cancer_status == "Cancerous", ]}, alpha = 0.5, aes(color = "Cancerous")) +
+  scale_color_manual(name = "Cancer status", values = c("Cancerous" = "#FBB4AE", "Non-cancerous" = "#B3CDE3")) +
+  ggtitle("Samples colored by cancer status") + theme_classic() +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_h <- ggplot(data=blood_loadings, aes(PC1, PC2)) + 
+  geom_point(data=function(x){x[!x$Study %in% c("DRP000987", "SRP057500", "SRP131037", "SRP214077"), ]}, alpha=0.08, aes(color = "Other")) +
+  geom_point(data=function(x){x[x$Study == "DRP000987", ]}, aes(color = "DRP000987")) +
+  geom_point(data=function(x){x[x$Study == "SRP144178", ]}, aes(color = "SRP144178")) + 
+  geom_point(data=function(x){x[x$Study == "SRP056295", ]}, aes(color = "SRP056295")) + 
+  geom_point(data=function(x){x[x$Study == "SRP093349", ]}, aes(color = "SRP093349")) + 
+  scale_color_manual(name = "Study", values = c("DRP000987" = "#7FC97F", "SRP144178" = "#FDC086", "SRP056295" = "#386CB0", "SRP093349" = "#BF5B17", "Other" = "grey")) +
+  ggtitle("Samples colored by select studies") + theme_classic() + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+```
+
+```{r, echo=FALSE}
+ps2_e
+```
+```{r, echo=FALSE}
+ps2_f
+```
+```{r, echo = FALSE}
+ps2_g
+```
+
+```{r, echo = FALSE}
+ps2_h
+```
+
+```{r, echo = FALSE}
+p2_b
+```
+
+## Examine the PCs computed across samples from GTEx muscle 
+
+```{r}
+compute_muscle_PC <- TRUE
+if(compute_muscle_PC){
+  L_muscle <- readRDS(paste0(homeDir, "data/confounder_modeling/GTEx_muscle/L_muscle.rds"))
+}else{
+  metadata_muscle <- metadata[metadata$study == "GTEx", ]
+  metadata_muscle <- metadata_muscle[metadata_muscle$tissue.category == "skeletal muscle", ]
+  muscle_counts <- counts[ ,colnames(counts) %in% metadata_muscle$sample]
+  muscle_counts <- muscle_counts[ ,match(metadata_muscle$sample, colnames(muscle_counts))]
+  MUSCLE <- readRDS("/data/abattle4/prashanthi/recount3/data/GTEx/uncorrected_expression/Muscle_Skeletal.rds")
+  muscle_characteristics <- data.frame(colData(MUSCLE))
+  muscle_characteristics <-   muscle_characteristics[match(colnames(muscle_counts), rownames(muscle_characteristics)), ]
+
+  muscle_counts <- scale(t(muscle_counts))
+  L_muscle <- irlba(muscle_counts, 50)
+  saveRDS(L_muscle, paste0(homeDir, "data/confounder_modeling/GTEx_muscle/L_muscle.rds"))
+}
+
+muscle_loadings_compute <- TRUE
+if(muscle_loadings_compute){
+  muscle_loadings <- readRDS(paste0(homeDir, "data/confounder_modeling/GTEx_muscle/muscle_loadings.rds"))
+  PVE_muscle <- readRDS(paste0(homeDir, "data/confounder_modeling/GTEx_muscle/PVE_muscle.rds"))
+}else{
+  muscle_loadings <- L_muscle[["u"]]
+  colnames(muscle_loadings) <- paste0("PC", c(1:dim(muscle_loadings)[2]))
+  muscle_loadings <- data.frame(muscle_loadings)
+
+  PVE_muscle <- data.frame("Percent variance explained" = (L_muscle$d^2/sum(L_muscle$d^2))*100, 
+                         "Principal components" = c(1:length(L_muscle$d)))
+  muscle_loadings$Subject <- muscle_characteristics$gtex.subjid # Subject
+  muscle_loadings$Sex <- muscle_characteristics$gtex.sex # Sex
+  muscle_loadings$Age <- muscle_characteristics$gtex.age # Age
+  muscle_loadings$DTHHRDY <- muscle_characteristics$gtex.dthhrdy # Type of death
+  muscle_loadings$RIN <- muscle_characteristics$gtex.smrin # The RNA Integrity Number, a basic measure of the quality of RNA isolated
+  muscle_loadings$BATCH <- muscle_characteristics$gtex.smnabtch # Nucleic Acid Isolation Batch ID
+  muscle_loadings$SMGEBATCH <- muscle_characteristics$gtex.smgebtch # Genotype or Expression Batch ID
+  muscle_loadings$CENTER <- muscle_characteristics$gtex.smcenter # Genotype or Expression Batch ID
+
+  muscle_loadings$Subject <- as.factor(muscle_loadings$Subject)
+  muscle_loadings$Sex <- as.factor(muscle_loadings$Sex)
+  muscle_loadings$Age <- as.factor(muscle_loadings$Age)
+  muscle_loadings$DTHHRDY <- as.factor(muscle_loadings$DTHHRDY)
+  muscle_loadings$BATCH <- as.factor(muscle_loadings$BATCH)
+  muscle_loadings$SMGEBATCH <- as.factor(muscle_loadings$SMGEBATCH)
+  muscle_loadings$CENTER <- as.factor(muscle_loadings$CENTER)
+  
+  muscle_loadings$DTHHRDY <- as.character(muscle_loadings$DTHHRDY)
+  muscle_loadings$DTHHRDY[muscle_loadings$DTHHRDY == "0"] <- "Ventilator case"
+  muscle_loadings$DTHHRDY[muscle_loadings$DTHHRDY == "1"] <- "Violent and fast death"
+  muscle_loadings$DTHHRDY[muscle_loadings$DTHHRDY == "2"] <- "Fast death (natural causes)"
+  muscle_loadings$DTHHRDY[muscle_loadings$DTHHRDY == "3"] <- "Intermediate death"
+  muscle_loadings$DTHHRDY[muscle_loadings$DTHHRDY == "4"] <- "Slow death"
+
+  
+  saveRDS(muscle_loadings, paste0(homeDir, "data/confounder_modeling/GTEx_muscle/muscle_loadings.rds"))
+  saveRDS(PVE_muscle, paste0(homeDir, "data/confounder_modeling/GTEx_muscle/PVE_muscle.rds.rds"))
+}
+
+compute_muscle_LM <- TRUE
+if(compute_muscle_LM){
+  R_squared_muscle <- readRDS(paste0(homeDir, "data/confounder_modeling/GTEx_muscle/anova_muscle.rds"))
+}else{
+  lm_muscle <- list()
+  lm_muscle[[1]] <- lm(PC1 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[2]] <- lm(PC2 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[3]] <- lm(PC3 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[4]] <- lm(PC4 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[5]] <- lm(PC5 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[6]] <- lm(PC6 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[7]] <- lm(PC7 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[8]] <- lm(PC5 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[9]] <- lm(PC6 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+  lm_muscle[[10]] <- lm(PC7 ~ Sex + Age + DTHHRDY + BATCH + SMGEBATCH + CENTER, data = muscle_loadings)
+
+  res_muscle <- lapply(lm_muscle, function(ilm){
+    anova(ilm)
+  })
+
+  R_squared_muscle <- lapply(res_muscle, function(ires){
+    r2 <- ires$`Sum Sq`/sum(ires$`Sum Sq`)
+    r2[1:6]
+  })
+
+  p_muscle <- lapply(res_muscle, function(ires){
+    ires$`Pr(>F)`[1:6]
+  })
+
+  p_muscle <- do.call(rbind, p_muscle)
+  colnames(p_muscle) <- c("Sex", "Age", "Cause of death", "Batch", "GE Batch", "Center")
+  p_muscle <- data.frame(p_muscle)
+  p_muscle$PC <- paste0("PC", c(1:10))
+  p_muscle <- reshape2::melt(p_muscle, id.vars = "PC")
+  p_muscle$variable <- as.character(p_muscle$variable)
+  p_muscle$variable[p_muscle$variable == "GE.Batch"] <- "GE Batch"
+  p_muscle$variable[p_muscle$variable == "Cause.of.death"] <- "Cause of\ndeath"
+  p_muscle$symbol <- rep("", 10)
+  p_muscle$symbol[p_muscle$value <= 0.001] <- "***"
+  p_muscle$symbol[p_muscle$value <= 0.01 & p_muscle$value > 0.001] <- "**"
+  p_muscle$symbol[p_muscle$value <= 0.05 & p_muscle$value > 0.01] <- "*"
+
+  R_squared_muscle <- do.call(rbind, R_squared_muscle)
+  colnames(R_squared_muscle) <- c("Sex", "Age", "Cause of death", "Batch", "GE Batch", "Center")
+  R_squared_muscle <- data.frame(R_squared_muscle)
+  R_squared_muscle$PC <- paste0("PC", c(1:10))
+  R_squared_muscle <- reshape2::melt(R_squared_muscle, id.vars = "PC")
+  R_squared_muscle$variable <- as.character(R_squared_muscle$variable)
+  R_squared_muscle$variable[R_squared_muscle$variable == "GE.Batch"] <- "GE Batch"
+  R_squared_muscle$variable[R_squared_muscle$variable == "Cause.of.death"] <- "Cause of\ndeath"
+  R_squared_muscle$value <- R_squared_muscle$value*100
+  R_squared_muscle$symbol <- p_muscle$symbol
+  saveRDS(R_squared_muscle, paste0(homeDir, "data/confounder_modeling/GTEx_muscle/anova_muscle.rds"))
+}
+
+ps2_i <- ggplot(PVE_muscle[1:30, ], aes(Principal.components, Percent.variance.explained)) + 
+  geom_line() +
+  geom_point(size=5, colour="white") + theme_classic() + ggtitle("Scree Plot of Top 30\nGTEx-Muscle Expression PCs") +
+  geom_point(size=2) + xlab("Principal Components") + ylab("Percent variance explained")+ 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+p <- ggplot(aes(x=variable, y=PC, fill=value), data=R_squared_muscle)
+p2_c <- p + geom_tile() + scale_fill_gradient(low="white", high="#416A1D") + 
+  labs(y=NULL, x=NULL, fill="R-squared") + geom_text(aes(label = symbol), size = 8) +
+  theme_classic() + theme(axis.line = element_blank(), axis.ticks.length = unit(0, "lines")) +
+  scale_y_discrete(limits = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")) + 
+  ggtitle("ANOVA of top 10 expression PCs\nin GTEx-Muscle") + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_j <- ggplot(muscle_loadings, aes(x = PC1, y = PC2, colour = DTHHRDY)) + geom_point(alpha = 0.8) + 
+  scale_color_manual(values = c(
+    "Ventilator case" = "#1B9E77",
+    "Violent and fast death" = "#D95F02",
+    "Fast death (natural causes)" = "#7570B3",
+    "Intermediate death"= "#E7298A",
+    "Slow death" = "#66A61E"), na.value = "grey") +
+  theme_classic() + ggtitle("Samples colored by reason of death") + 
+  guides(colour = guide_legend(title = "Reason for death" ,override.aes = list(alpha = 1))) +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_l <- ggplot(muscle_loadings, aes(x = PC1, y = PC2, colour = Age)) + geom_point(alpha = 0.8) + 
+  scale_color_manual(values = c(
+    "20-29" = "#7FC97F",
+    "30-39" = "#BEAED4",
+    "40-49" = "#FDC086",
+    "50-59"= "#FFFF99",
+    "60-69" = "#386CB0", 
+    "70-79" = "#F0027F"), na.value = "grey") +
+  theme_classic() + ggtitle("Samples colored by Age") +
+  guides(colour = guide_legend(title = "Age" ,override.aes = list(alpha = 1))) +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+ps2_k <- ggplot(muscle_loadings[!muscle_loadings$CENTER == "", ], aes(x = PC1, y = PC2, colour = CENTER)) + geom_point(alpha = 0.8) +
+  theme_classic() + ggtitle("Samples colored by Center") +
+  guides(colour = guide_legend(title = "Center" ,override.aes = list(alpha = 1))) +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+```
+
+```{r, echo=FALSE}
+ps2_i
+```
+
+```{r, echo=FALSE}
+ps2_j
+```
+
+```{r, echo=FALSE}
+ps2_k
+```
+
+```{r, echo=FALSE}
+ps2_l
+```
+
+```{r, echo=FALSE}
+p2_c
+```
