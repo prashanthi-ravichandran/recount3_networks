@@ -1,0 +1,30 @@
+[1] "/data/abattle4/prashanthi/recount3/data/central_nervous_system/all/weighted_covariances/only_sra/cov_40.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.446443e-03.
+Newton iteration 2.
+  Active set size = 8913.
+  sub-gradient = 7.039138e-03, l1-norm of X = 1.394491e-01.
+  Coordinate descent sweep 1. norm of D = 6.888229e-03, change in D = 6.888229e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.125807e-06.
+Newton iteration 3.
+  Active set size = 8913.
+  sub-gradient = 1.412020e-04, l1-norm of X = 1.394404e-01.
+  Coordinate descent sweep 1. norm of D = 1.547800e-04, change in D = 1.547800e-04.
+  Coordinate descent sweep 2. norm of D = 1.628347e-04, change in D = 8.067133e-06.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 8.456482e-09.
+Newton iteration 4.
+  Active set size = 8913.
+  sub-gradient = 1.173918e-07, l1-norm of X = 1.396375e-01.
+  Coordinate descent sweep 1. norm of D = 1.184971e-07, change in D = 1.184971e-07.
+  Coordinate descent sweep 2. norm of D = 1.226232e-07, change in D = 4.149392e-09.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size chosen: 5.000000e-01.
+  Objective value decreased by 1.818989e-12.
+QUIC CPU time: 1976.408 seconds

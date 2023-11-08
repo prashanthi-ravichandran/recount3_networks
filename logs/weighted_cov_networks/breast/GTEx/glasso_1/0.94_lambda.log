@@ -1,0 +1,32 @@
+[1] "/work-zfs/abattle4/prashanthi/recount3/data/breast/GTEx/weighted_covariances/cov_1.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 7.073761e-03.
+Newton iteration 2.
+  Active set size = 8490.
+  sub-gradient = 1.507814e-02, l1-norm of X = 3.378192e-01.
+  Coordinate descent sweep 1. norm of D = 1.476823e-02, change in D = 1.476823e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.406207e-05.
+Newton iteration 3.
+  Active set size = 8490.
+  sub-gradient = 2.611133e-04, l1-norm of X = 3.370056e-01.
+  Coordinate descent sweep 1. norm of D = 2.856252e-04, change in D = 2.856252e-04.
+  Coordinate descent sweep 2. norm of D = 2.895789e-04, change in D = 5.030362e-06.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.955232e-08.
+Newton iteration 4.
+  Active set size = 8490.
+  sub-gradient = 7.864092e-08, l1-norm of X = 3.374169e-01.
+  Coordinate descent sweep 1. norm of D = 8.221792e-08, change in D = 8.221792e-08.
+  Coordinate descent sweep 2. norm of D = 8.584084e-08, change in D = 3.663153e-09.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size chosen: 2.500000e-01.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 1268.080 seconds

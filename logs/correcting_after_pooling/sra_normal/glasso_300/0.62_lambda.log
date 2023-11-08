@@ -1,0 +1,43 @@
+[1] "sra_normal"    "300"           "pooling_first" "0.62"         
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.405121e-01.
+Newton iteration 2.
+  Active set size = 5781.
+  sub-gradient = 3.103861e-01, l1-norm of X = 1.491339e+00.
+  Coordinate descent sweep 1. norm of D = 2.827820e-01, change in D = 2.827820e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 2.775632e-03.
+Newton iteration 3.
+  Active set size = 5781.
+  sub-gradient = 3.310353e-02, l1-norm of X = 1.477594e+00.
+  Coordinate descent sweep 1. norm of D = 3.337004e-02, change in D = 3.337004e-02.
+  Coordinate descent sweep 2. norm of D = 5.156274e-02, change in D = 1.819844e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 2.735773e-04.
+Newton iteration 4.
+  Active set size = 5781.
+  sub-gradient = 2.346954e-03, l1-norm of X = 1.513908e+00.
+  Coordinate descent sweep 1. norm of D = 2.412154e-03, change in D = 2.412154e-03.
+  Coordinate descent sweep 2. norm of D = 3.651673e-03, change in D = 1.255962e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.633313e-06.
+Newton iteration 5.
+  Active set size = 5781.
+  sub-gradient = 1.646498e-04, l1-norm of X = 1.516127e+00.
+  Coordinate descent sweep 1. norm of D = 1.846657e-04, change in D = 1.846657e-04.
+  Coordinate descent sweep 2. norm of D = 2.582314e-04, change in D = 8.440899e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.153057e-08.
+Newton iteration 6.
+  Active set size = 5781.
+  sub-gradient = 1.381147e-05, l1-norm of X = 1.516311e+00.
+  Coordinate descent sweep 1. norm of D = 1.908487e-05, change in D = 1.908487e-05.
+  Coordinate descent sweep 2. norm of D = 2.113936e-05, change in D = 2.328701e-06.
+  Coordinate descent sweep 3. norm of D = 2.186965e-05, change in D = 7.365781e-07.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.155058e-10.
+QUIC CPU time: 826.562 seconds

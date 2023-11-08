@@ -1,0 +1,27 @@
+[1] "/data/abattle4/prashanthi/recount3/data/blood/all/weighted_covariances/cov_60.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.223339e-05.
+Newton iteration 2.
+  Active set size = 7805.
+  sub-gradient = 8.474661e-05, l1-norm of X = 1.221773e-02.
+  Coordinate descent sweep 1. norm of D = 8.473764e-05, change in D = 8.473764e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.784429e-09.
+Newton iteration 3.
+  Active set size = 7805.
+  sub-gradient = 8.930669e-09, l1-norm of X = 1.221824e-02.
+  Coordinate descent sweep 1. norm of D = 8.965287e-09, change in D = 8.965287e-09.
+  Coordinate descent sweep 2. norm of D = 8.966270e-09, change in D = 9.831954e-13.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 2.500000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size chosen: 1.250000e-01.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 1396.299 seconds

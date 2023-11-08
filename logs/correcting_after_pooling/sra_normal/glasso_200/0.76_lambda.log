@@ -1,0 +1,42 @@
+[1] "sra_normal"    "200"           "pooling_first" "0.76"         
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.612187e-03.
+Newton iteration 2.
+  Active set size = 5770.
+  sub-gradient = 3.278150e-03, l1-norm of X = 9.481371e-02.
+  Coordinate descent sweep 1. norm of D = 3.222942e-03, change in D = 3.222942e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.612440e-06.
+Newton iteration 3.
+  Active set size = 5770.
+  sub-gradient = 5.221421e-05, l1-norm of X = 9.481084e-02.
+  Coordinate descent sweep 1. norm of D = 5.556224e-05, change in D = 5.556224e-05.
+  Coordinate descent sweep 2. norm of D = 5.893857e-05, change in D = 3.383946e-06.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.939043e-09.
+Newton iteration 4.
+  Active set size = 5770.
+  sub-gradient = 3.589586e-08, l1-norm of X = 9.488808e-02.
+  Coordinate descent sweep 1. norm of D = 3.661297e-08, change in D = 3.661297e-08.
+  Coordinate descent sweep 2. norm of D = 3.733224e-08, change in D = 7.192770e-10.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 2.500000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 1.250000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 6.250000e-02.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 3.125000e-02.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 1.562500e-02.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size chosen: 7.812500e-03.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 755.542 seconds

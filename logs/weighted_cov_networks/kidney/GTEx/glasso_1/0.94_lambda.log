@@ -1,0 +1,31 @@
+[1] "/data/abattle4/prashanthi/recount3/data/kidney/GTEx/weighted_covariances/cov_1.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 7.875231e-03.
+Newton iteration 2.
+  Active set size = 8402.
+  sub-gradient = 2.213425e-02, l1-norm of X = 5.859984e-01.
+  Coordinate descent sweep 1. norm of D = 2.139964e-02, change in D = 2.139964e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.623064e-05.
+Newton iteration 3.
+  Active set size = 8402.
+  sub-gradient = 9.105218e-04, l1-norm of X = 5.754551e-01.
+  Coordinate descent sweep 1. norm of D = 9.250063e-04, change in D = 9.250063e-04.
+  Coordinate descent sweep 2. norm of D = 9.472415e-04, change in D = 7.655970e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 9.728319e-08.
+Newton iteration 4.
+  Active set size = 8402.
+  sub-gradient = 3.559043e-06, l1-norm of X = 5.768049e-01.
+  Coordinate descent sweep 1. norm of D = 3.561576e-06, change in D = 3.561576e-06.
+  Coordinate descent sweep 2. norm of D = 3.534906e-06, change in D = 1.195446e-07.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 3.637979e-12.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 1806.791 seconds

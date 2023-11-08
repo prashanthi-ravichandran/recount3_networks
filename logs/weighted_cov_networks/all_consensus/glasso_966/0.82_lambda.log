@@ -1,0 +1,29 @@
+[1] "all_consensus" "966"           "weighted"      "0.82"         
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.198662e-04.
+Newton iteration 2.
+  Active set size = 5464.
+  sub-gradient = 2.410881e-04, l1-norm of X = 1.795582e-02.
+  Coordinate descent sweep 1. norm of D = 2.409583e-04, change in D = 2.409583e-04.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.436456e-08.
+Newton iteration 3.
+  Active set size = 5464.
+  sub-gradient = 2.638041e-06, l1-norm of X = 1.795367e-02.
+  Coordinate descent sweep 1. norm of D = 2.637884e-06, change in D = 2.637884e-06.
+  Coordinate descent sweep 2. norm of D = 2.754000e-06, change in D = 1.161160e-07.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.456968e-12.
+Newton iteration 4.
+  Active set size = 5464.
+  sub-gradient = 6.284673e-11, l1-norm of X = 1.795797e-02.
+  Coordinate descent sweep 1. norm of D = 6.284838e-11, change in D = 6.284838e-11.
+  Coordinate descent sweep 2. norm of D = 6.352227e-11, change in D = 6.821373e-13.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 9.094947e-13.
+QUIC CPU time: 498.377 seconds
+[1] "/data/abattle4/prashanthi/recount3/results/weighted_cov_networks/all_consensus/net_966/lambda_0.82.rds"

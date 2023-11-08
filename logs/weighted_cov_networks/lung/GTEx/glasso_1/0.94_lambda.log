@@ -1,0 +1,37 @@
+[1] "/work-zfs/abattle4/prashanthi/recount3/data/lung/GTEx/weighted_covariances/cov_1.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.303961e-03.
+Newton iteration 2.
+  Active set size = 8777.
+  sub-gradient = 1.005351e-02, l1-norm of X = 3.375267e-01.
+  Coordinate descent sweep 1. norm of D = 9.812745e-03, change in D = 9.812745e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.276097e-06.
+Newton iteration 3.
+  Active set size = 8777.
+  sub-gradient = 1.650169e-04, l1-norm of X = 3.352795e-01.
+  Coordinate descent sweep 1. norm of D = 1.750656e-04, change in D = 1.750656e-04.
+  Coordinate descent sweep 2. norm of D = 1.789820e-04, change in D = 4.608205e-06.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.513357e-09.
+Newton iteration 4.
+  Active set size = 8777.
+  sub-gradient = 1.257132e-07, l1-norm of X = 3.355412e-01.
+  Coordinate descent sweep 1. norm of D = 1.292939e-07, change in D = 1.292939e-07.
+  Coordinate descent sweep 2. norm of D = 1.306394e-07, change in D = 2.504555e-09.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 3.637979e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 3.637979e-12.
+    Line search step size 2.500000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 1.250000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 6.250000e-02.
+      Objective value would not decrease sufficiently: 3.637979e-12.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 2070.520 seconds

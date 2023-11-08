@@ -1,0 +1,100 @@
+[1] "/work-zfs/abattle4/prashanthi/recount3/data/breast/all/weighted_covariances/cov_12.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size 1.000000e+00.  Lack of positive definiteness.
+    Line search step size 5.000000e-01.  Lack of positive definiteness.
+    Line search step size 2.500000e-01.  Lack of positive definiteness.
+    Line search step size chosen: 1.250000e-01.
+  Objective value decreased by 1.301045e+01.
+Newton iteration 2.
+  Active set size = 12229.
+  sub-gradient = 2.384605e+02, l1-norm of X = 2.985877e+01.
+  Coordinate descent sweep 1. norm of D = 1.710047e+02, change in D = 1.710047e+02.
+    Line search step size 1.000000e+00.  Lack of positive definiteness.
+    Line search step size chosen: 5.000000e-01.
+  Objective value decreased by 1.162653e+01.
+Newton iteration 3.
+  Active set size = 12233.
+  sub-gradient = 6.966410e+02, l1-norm of X = 8.373344e+01.
+  Coordinate descent sweep 1. norm of D = 7.449776e+01, change in D = 7.449776e+01.
+  Coordinate descent sweep 2. norm of D = 8.679795e+01, change in D = 2.173251e+01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.950465e+00.
+Newton iteration 4.
+  Active set size = 11508.
+  sub-gradient = 2.384456e+02, l1-norm of X = 1.115205e+02.
+  Coordinate descent sweep 1. norm of D = 2.044829e+01, change in D = 2.044829e+01.
+  Coordinate descent sweep 2. norm of D = 2.563502e+01, change in D = 1.035274e+01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 9.474056e-01.
+Newton iteration 5.
+  Active set size = 11384.
+  sub-gradient = 8.665175e+01, l1-norm of X = 1.144548e+02.
+  Coordinate descent sweep 1. norm of D = 9.375164e+00, change in D = 9.375164e+00.
+  Coordinate descent sweep 2. norm of D = 1.123493e+01, change in D = 5.577906e+00.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.463325e-01.
+Newton iteration 6.
+  Active set size = 11337.
+  sub-gradient = 2.966719e+01, l1-norm of X = 1.151277e+02.
+  Coordinate descent sweep 1. norm of D = 5.025801e+00, change in D = 5.025801e+00.
+  Coordinate descent sweep 2. norm of D = 6.197370e+00, change in D = 3.099073e+00.
+  Coordinate descent sweep 3. norm of D = 6.832351e+00, change in D = 1.951620e+00.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.258173e-01.
+Newton iteration 7.
+  Active set size = 11301.
+  sub-gradient = 6.092093e+00, l1-norm of X = 1.155205e+02.
+  Coordinate descent sweep 1. norm of D = 1.715162e+00, change in D = 1.715162e+00.
+  Coordinate descent sweep 2. norm of D = 2.064048e+00, change in D = 1.180163e+00.
+  Coordinate descent sweep 3. norm of D = 2.370103e+00, change in D = 8.143528e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.679812e-02.
+Newton iteration 8.
+  Active set size = 11299.
+  sub-gradient = 8.092677e-01, l1-norm of X = 1.156442e+02.
+  Coordinate descent sweep 1. norm of D = 5.680083e-01, change in D = 5.680083e-01.
+  Coordinate descent sweep 2. norm of D = 7.782827e-01, change in D = 4.286464e-01.
+  Coordinate descent sweep 3. norm of D = 8.694786e-01, change in D = 2.709030e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 2.291696e-03.
+Newton iteration 9.
+  Active set size = 11300.
+  sub-gradient = 2.386463e-01, l1-norm of X = 1.157192e+02.
+  Coordinate descent sweep 1. norm of D = 2.188664e-01, change in D = 2.188664e-01.
+  Coordinate descent sweep 2. norm of D = 2.824417e-01, change in D = 1.493174e-01.
+  Coordinate descent sweep 3. norm of D = 3.347911e-01, change in D = 1.161833e-01.
+  Coordinate descent sweep 4. norm of D = 3.713037e-01, change in D = 8.817946e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.232795e-04.
+Newton iteration 10.
+  Active set size = 11298.
+  sub-gradient = 1.119030e-01, l1-norm of X = 1.157516e+02.
+  Coordinate descent sweep 1. norm of D = 6.755065e-02, change in D = 6.755065e-02.
+  Coordinate descent sweep 2. norm of D = 8.798136e-02, change in D = 4.727824e-02.
+  Coordinate descent sweep 3. norm of D = 1.023311e-01, change in D = 3.673175e-02.
+  Coordinate descent sweep 4. norm of D = 1.122131e-01, change in D = 2.607764e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 6.030327e-05.
+Newton iteration 11.
+  Active set size = 11297.
+  sub-gradient = 2.408229e-02, l1-norm of X = 1.157628e+02.
+  Coordinate descent sweep 1. norm of D = 2.300687e-02, change in D = 2.300687e-02.
+  Coordinate descent sweep 2. norm of D = 2.985641e-02, change in D = 1.512138e-02.
+  Coordinate descent sweep 3. norm of D = 3.683043e-02, change in D = 1.376157e-02.
+  Coordinate descent sweep 4. norm of D = 4.121143e-02, change in D = 1.003008e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.214680e-05.
+Newton iteration 12.
+  Active set size = 11296.
+  sub-gradient = 7.282863e-03, l1-norm of X = 1.157663e+02.
+  Coordinate descent sweep 1. norm of D = 6.924150e-03, change in D = 6.924150e-03.
+  Coordinate descent sweep 2. norm of D = 1.033744e-02, change in D = 6.337539e-03.
+  Coordinate descent sweep 3. norm of D = 1.207340e-02, change in D = 4.477505e-03.
+  Coordinate descent sweep 4. norm of D = 1.363731e-02, change in D = 3.497429e-03.
+  Coordinate descent sweep 5. norm of D = 1.479815e-02, change in D = 2.704253e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.639375e-06.
+QUIC CPU time: 2988.610 seconds

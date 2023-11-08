@@ -1,0 +1,30 @@
+[1] "cancer_consensus" "387"              "weighted"         "0.78"            
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.284086e-03.
+Newton iteration 2.
+  Active set size = 6083.
+  sub-gradient = 2.597111e-03, l1-norm of X = 1.039121e-01.
+  Coordinate descent sweep 1. norm of D = 2.591332e-03, change in D = 2.591332e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 6.005803e-07.
+Newton iteration 3.
+  Active set size = 6083.
+  sub-gradient = 2.748703e-05, l1-norm of X = 1.039143e-01.
+  Coordinate descent sweep 1. norm of D = 2.969435e-05, change in D = 2.969435e-05.
+  Coordinate descent sweep 2. norm of D = 2.982893e-05, change in D = 1.360246e-07.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.829861e-10.
+Newton iteration 4.
+  Active set size = 6083.
+  sub-gradient = 7.305736e-09, l1-norm of X = 1.039545e-01.
+  Coordinate descent sweep 1. norm of D = 7.380896e-09, change in D = 7.380896e-09.
+  Coordinate descent sweep 2. norm of D = 7.496617e-09, change in D = 1.209988e-10.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size chosen: 5.000000e-01.
+  Objective value decreased by 9.094947e-13.
+QUIC CPU time: 512.450 seconds

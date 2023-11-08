@@ -1,0 +1,42 @@
+[1] "GTEx"          "40"            "pooling_first" "0.86"         
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 2.571690e-02.
+Newton iteration 2.
+  Active set size = 5791.
+  sub-gradient = 5.428345e-02, l1-norm of X = 5.679275e-01.
+  Coordinate descent sweep 1. norm of D = 5.216809e-02, change in D = 5.216809e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.963317e-04.
+Newton iteration 3.
+  Active set size = 5791.
+  sub-gradient = 3.949971e-03, l1-norm of X = 5.651819e-01.
+  Coordinate descent sweep 1. norm of D = 4.484372e-03, change in D = 4.484372e-03.
+  Coordinate descent sweep 2. norm of D = 5.405389e-03, change in D = 9.210173e-04.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 6.552919e-06.
+Newton iteration 4.
+  Active set size = 5791.
+  sub-gradient = 8.150056e-05, l1-norm of X = 5.717169e-01.
+  Coordinate descent sweep 1. norm of D = 8.142745e-05, change in D = 8.142745e-05.
+  Coordinate descent sweep 2. norm of D = 9.861741e-05, change in D = 1.726445e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.520675e-09.
+Newton iteration 5.
+  Active set size = 5791.
+  sub-gradient = 6.532747e-07, l1-norm of X = 5.717789e-01.
+  Coordinate descent sweep 1. norm of D = 6.508205e-07, change in D = 6.508205e-07.
+  Coordinate descent sweep 2. norm of D = 8.610604e-07, change in D = 2.316149e-07.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 2.500000e-01.
+      Objective value would not decrease sufficiently: 9.094947e-13.
+    Line search step size 1.250000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 823.509 seconds

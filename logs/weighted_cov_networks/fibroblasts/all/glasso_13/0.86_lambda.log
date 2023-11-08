@@ -1,0 +1,30 @@
+[1] "/work-zfs/abattle4/prashanthi/recount3/data/fibroblasts/all/weighted_covariances/cov_13.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 8.199401e-04.
+Newton iteration 2.
+  Active set size = 8530.
+  sub-gradient = 1.657139e-03, l1-norm of X = 7.834914e-02.
+  Coordinate descent sweep 1. norm of D = 1.639221e-03, change in D = 1.639221e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.297610e-07.
+Newton iteration 3.
+  Active set size = 8530.
+  sub-gradient = 1.654122e-05, l1-norm of X = 7.834914e-02.
+  Coordinate descent sweep 1. norm of D = 1.719351e-05, change in D = 1.719351e-05.
+  Coordinate descent sweep 2. norm of D = 1.788081e-05, change in D = 6.873030e-07.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.418812e-10.
+Newton iteration 4.
+  Active set size = 8530.
+  sub-gradient = 5.913971e-09, l1-norm of X = 7.837706e-02.
+  Coordinate descent sweep 1. norm of D = 6.177170e-09, change in D = 6.177170e-09.
+  Coordinate descent sweep 2. norm of D = 6.231401e-09, change in D = 5.434197e-11.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size chosen: 5.000000e-01.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 1167.230 seconds

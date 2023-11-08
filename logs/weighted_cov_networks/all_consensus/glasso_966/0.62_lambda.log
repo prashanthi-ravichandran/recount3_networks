@@ -1,0 +1,44 @@
+[1] "all_consensus" "966"           "weighted"      "0.62"         
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.466518e-01.
+Newton iteration 2.
+  Active set size = 5477.
+  sub-gradient = 3.307667e-01, l1-norm of X = 1.430042e+00.
+  Coordinate descent sweep 1. norm of D = 2.919544e-01, change in D = 2.919544e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.786995e-03.
+Newton iteration 3.
+  Active set size = 5477.
+  sub-gradient = 4.196512e-02, l1-norm of X = 1.410518e+00.
+  Coordinate descent sweep 1. norm of D = 5.881799e-02, change in D = 5.881799e-02.
+  Coordinate descent sweep 2. norm of D = 6.841876e-02, change in D = 1.028052e-02.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.170434e-04.
+Newton iteration 4.
+  Active set size = 5477.
+  sub-gradient = 4.229814e-03, l1-norm of X = 1.457967e+00.
+  Coordinate descent sweep 1. norm of D = 5.238992e-03, change in D = 5.238992e-03.
+  Coordinate descent sweep 2. norm of D = 5.941860e-03, change in D = 7.430106e-04.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.333768e-06.
+Newton iteration 5.
+  Active set size = 5477.
+  sub-gradient = 3.295650e-04, l1-norm of X = 1.460213e+00.
+  Coordinate descent sweep 1. norm of D = 3.837110e-04, change in D = 3.837110e-04.
+  Coordinate descent sweep 2. norm of D = 4.494751e-04, change in D = 7.288800e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.923036e-08.
+Newton iteration 6.
+  Active set size = 5477.
+  sub-gradient = 8.049758e-06, l1-norm of X = 1.460324e+00.
+  Coordinate descent sweep 1. norm of D = 1.135993e-05, change in D = 1.135993e-05.
+  Coordinate descent sweep 2. norm of D = 1.420332e-05, change in D = 2.951827e-06.
+  Coordinate descent sweep 3. norm of D = 1.519930e-05, change in D = 9.959838e-07.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.274181e-11.
+QUIC CPU time: 771.464 seconds
+[1] "/data/abattle4/prashanthi/recount3/results/weighted_cov_networks/all_consensus/net_966/lambda_0.62.rds"

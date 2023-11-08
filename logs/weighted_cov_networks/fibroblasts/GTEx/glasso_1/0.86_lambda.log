@@ -1,0 +1,48 @@
+[1] "/work-zfs/abattle4/prashanthi/recount3/data/fibroblasts/GTEx/weighted_covariances/cov_1.rds"
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 7.363621e-02.
+Newton iteration 2.
+  Active set size = 8559.
+  sub-gradient = 2.313592e-01, l1-norm of X = 2.034130e+00.
+  Coordinate descent sweep 1. norm of D = 2.014450e-01, change in D = 2.014450e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.118060e-03.
+Newton iteration 3.
+  Active set size = 8559.
+  sub-gradient = 1.740266e-02, l1-norm of X = 1.955667e+00.
+  Coordinate descent sweep 1. norm of D = 1.793573e-02, change in D = 1.793573e-02.
+  Coordinate descent sweep 2. norm of D = 1.801966e-02, change in D = 1.715609e-03.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.998173e-05.
+Newton iteration 4.
+  Active set size = 8559.
+  sub-gradient = 2.018650e-04, l1-norm of X = 1.967011e+00.
+  Coordinate descent sweep 1. norm of D = 2.084067e-04, change in D = 2.084067e-04.
+  Coordinate descent sweep 2. norm of D = 2.306793e-04, change in D = 4.472872e-05.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 3.810783e-09.
+Newton iteration 5.
+  Active set size = 8559.
+  sub-gradient = 4.788746e-06, l1-norm of X = 1.967158e+00.
+  Coordinate descent sweep 1. norm of D = 4.585147e-06, change in D = 4.585147e-06.
+  Coordinate descent sweep 2. norm of D = 4.596320e-06, change in D = 5.687779e-07.
+    Line search step size 1.000000e+00.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 5.000000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 2.500000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 1.250000e-01.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 6.250000e-02.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 3.125000e-02.
+      Objective value would not decrease sufficiently: 1.818989e-12.
+    Line search step size 1.562500e-02.
+      Objective value would not decrease sufficiently: 3.637979e-12.
+  Objective value decreased by 0.000000e+00.
+QUIC CPU time: 2501.230 seconds

@@ -1,0 +1,29 @@
+[1] "cancer_consensus" "386"              "weighted"         "0.70"            
+[1] "Data read complete"
+Running QUIC version 1.1 in 'default' mode.
+Newton iteration 1.
+  X is a diagonal matrix.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 5.721713e-02.
+Newton iteration 2.
+  Active set size = 6091.
+  sub-gradient = 1.210059e-01, l1-norm of X = 1.015696e+00.
+  Coordinate descent sweep 1. norm of D = 1.180737e-01, change in D = 1.180737e-01.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 4.762567e-04.
+Newton iteration 3.
+  Active set size = 6091.
+  sub-gradient = 3.462419e-03, l1-norm of X = 1.020803e+00.
+  Coordinate descent sweep 1. norm of D = 3.841548e-03, change in D = 3.841548e-03.
+  Coordinate descent sweep 2. norm of D = 3.976403e-03, change in D = 1.871135e-04.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 1.332803e-06.
+Newton iteration 4.
+  Active set size = 6091.
+  sub-gradient = 5.033640e-05, l1-norm of X = 1.022876e+00.
+  Coordinate descent sweep 1. norm of D = 5.186180e-05, change in D = 5.186180e-05.
+  Coordinate descent sweep 2. norm of D = 5.596304e-05, change in D = 4.463488e-06.
+    Line search step size chosen: 1.000000e+00.
+  Objective value decreased by 2.801244e-10.
+QUIC CPU time: 702.446 seconds
+[1] "/data/abattle4/prashanthi/recount3/results/weighted_cov_networks/cancer_consensus/net_386/lambda_0.70.rds"
