@@ -1,0 +1,732 @@
+---
+title: "Evaluating data aggregation"
+output:
+  html_document: default
+  pdf_document: default
+date: '2023-11-09'
+---
+
+```{r setup, include=FALSE}
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+knitr::opts_chunk$set(echo = TRUE)
+library(Rtsne)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(irlba)
+library(stringr)
+library(SummarizedExperiment)
+
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+source(paste0(homeDir, "src/plot_utils.R"))
+```
+
+## Visualize the properties of data aggregated in GTEx and SRA data partitions
+
+First, we describe the two data partitions, GTEx and SRA (non-cancer) that were used to compare alternate aggregation paradigms including, 
+
+1. Aggregating data before adjusting for confounding
+2. Aggregating data adjusted for confounding
+3. Unweighted aggregation of covariance matrices inferred from corrected data
+4. Weighted aggregation of covariance matrices inferred from corrected data
+
+```{r, fig.height=3, fig.width=5}
+
+gtex_metadata <- readRDS(paste0(homeDir, "data/GTEx/study_metaData.rds"))
+sra_metadata <- readRDS(paste0(homeDir, "data/sra_normal/study_metaData.rds"))
+
+sra_metadata$Source <- "SRA"
+gtex_metadata$Source <- "GTEx"
+colnames(gtex_metadata) <- colnames(sra_metadata)
+metadata <- rbind(gtex_metadata, sra_metadata)
+
+p04 <- ggplot(metadata, aes(x=nsamples, fill=Source, colour=Source)) +
+    geom_histogram(aes(y = after_stat(density)), binwidth=100, alpha=.3, position="identity") + 
+  theme_classic() + ylab("Density") + xlab("Sample size") + ggtitle("Sample size distributions") + 
+  theme(plot.title = element_text(face= "bold")) + scale_fill_manual(values = c("GTEx" = "#1B9E77", "SRA" = "#D95F02")) + 
+  scale_color_manual(values = c("GTEx" = "#1B9E77", "SRA" = "#D95F02")) + geom_vline(xintercept = median(gtex_metadata$nsamples), linetype = "dashed", colour = "#1B9E77") +
+  geom_vline(xintercept = median(sra_metadata$nsamples), linetype = "dashed", colour = "#D95F02") 
+
+p04
+```
+
+```{r}
+gtex_samples <- lapply(list.files(paste0(homeDir, "data/GTEx/corrected_expression/")), function(ifile){
+  iexpr <- readRDS(paste0(homeDir, "data/GTEx/corrected_expression/", ifile))
+  colnames(iexpr)
+})
+sra_samples <- lapply(list.files(paste0(homeDir, "data/sra_normal/corrected_expression/")), function(ifile){
+  iexpr <- readRDS(paste0(homeDir, "data/sra_normal/corrected_expression/", ifile))
+  colnames(iexpr)
+})
+gtex_samples <- unlist(gtex_samples)
+sra_samples <- unlist(sra_samples)
+metadata <- readRDS(paste0(homeDir, "data/all_metadata.rds"))
+gtex_metadata_df <- metadata[metadata$sample %in% gtex_samples, ]
+sra_metadata_df <- metadata[metadata$sample %in% sra_samples, ]
+gtex_metadata_df <- gtex_metadata_df[match(gtex_samples, gtex_metadata_df$sample), ]
+sra_metadata_df <- sra_metadata_df[match(sra_samples, sra_metadata_df$sample), ]
+
+tissue_freq_gtex <- data.frame(table(gtex_metadata_df$tissue.category))
+tissue_freq_gtex$Source <- "GTEx"
+colnames(tissue_freq_gtex) <- c("Tissue", "nSamples", "Source")
+
+tissue_freq_sra <- data.frame(table(sra_metadata_df$tissue.category))
+tissue_freq_sra$Source <- "SRA"
+colnames(tissue_freq_sra) <- c("Tissue", "nSamples", "Source")
+
+tissue_freq_gtex <- tissue_freq_gtex[order(-tissue_freq_gtex$nSamples), ]
+tissue_freq_sra <- tissue_freq_sra[order(-tissue_freq_sra$nSamples), ]
+
+
+smallTissue_gtex <- data.frame("Tissue" = "Other", 
+                               "nSamples" = sum(tissue_freq_gtex$nSamples[11:dim(tissue_freq_gtex)[1]]),
+                               "Source" = "GTEx")
+
+tissue_freq_gtex <- rbind(tissue_freq_gtex[1:10, ], smallTissue_gtex)
+
+p02 <- ggplot(tissue_freq_gtex, aes(x = reorder(Tissue, -nSamples), y = nSamples)) + 
+  geom_bar(position="dodge", stat="identity", alpha=0.5, fill = "#1B9E77") + 
+  coord_flip() + theme_classic() + xlab("") + ylab("Number of samples") + ggtitle("Prevalence of tissues in GTEx") +
+  theme(plot.title = element_text(face = "bold"))
+
+smallTissue_sra <- data.frame("Tissue" = "Other", 
+                               "nSamples" = sum(tissue_freq_sra$nSamples[11:dim(tissue_freq_sra)[1]]),
+                               "Source" = "SRA")
+tissue_freq_sra <- rbind(tissue_freq_sra[1:10, ], smallTissue_sra)
+
+
+p03 <- ggplot(tissue_freq_sra, aes(x = reorder(Tissue, -nSamples), y = nSamples)) + 
+  geom_bar(position="dodge", stat="identity", alpha=0.5, fill = "#D95F02") + 
+  coord_flip() + theme_classic() + xlab("") + ylab("Number of samples") + ggtitle("Prevalence of tissues in SRA") +
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+```{r, echo=FALSE, fig.width=9,fig.height=3}
+p02
+```
+
+```{r, echo=FALSE, fig.width=9.5,fig.height=3}
+p03
+```
+
+
+## Evaluating the improvement in held-out log-likelihood with data aggregation in each method
+
+```{r}
+cbp1 <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "PuBu"))(11)[-c(1:4)]
+orng1 <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Oranges"))(11)[-c(1:4)]
+grn1 <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Greens"))(11)[-c(1:4)]
+
+get_res_df <- function(agg_method, study){
+  if(study == "sra_normal"){ agg_version <- c(1,seq(100, 500, by = 100), 566) }
+  if(study == "GTEx"){  agg_version <- c(1,seq(10, 40, by = 10), 49)}
+  
+  resDir <- paste0(homeDir, "results/", agg_method, "/", study, "/")
+  
+  fn_ll <- paste0(resDir, "net_", agg_version, "/ll_", agg_version, ".rds")
+  results_ll <- lapply(fn_ll, readRDS)
+  fn_odds <- paste0(resDir, "net_", agg_version, "/oddsRatio_", agg_version, ".rds")
+  results_odds <- lapply(fn_odds, readRDS)
+  
+  names(results_ll) <- agg_version
+  names(results_odds) <- agg_version
+  
+  combined_results_ll <- bind_rows(results_ll, .id = 'studies')
+  combined_results_ll$studies <- factor(combined_results_ll$studies, levels = agg_version)
+  
+  combined_results_odds <- bind_rows(results_odds, .id = 'studies') 
+  combined_results_odds$studies <- factor(combined_results_odds$studies, levels = agg_version)
+  
+  combined_results <- merge(combined_results_ll, combined_results_odds)
+  combined_results <- combined_results %>% mutate(f1_score = 2*((precision*recall)/precision+recall))
+  if(agg_method == "weighted_cov_networks"){
+    combined_results$aggregation_type <- "Weighted covariance aggregation"
+  }
+  if(agg_method == "unweighted_cov_networks"){
+    combined_results$aggregation_type <- "Unweighted covariance aggregation"
+  }
+  if(agg_method == "pooling_after_correcting"){
+    combined_results$aggregation_type <- "Aggregating data adjusted for confounding"
+  }
+  if(agg_method == "correcting_after_pooling"){
+    combined_results$aggregation_type <- "Aggregating data"
+  }
+  combined_results
+}
+
+ll_plot <- function(combined_results_ll, pal.colors){
+  p1 <- ggplot(dat = combined_results_ll[combined_results_ll$n.edges<=100000 & combined_results_ll$n.edges>=500,], aes(x = log10(n.edges), y = ll_mean, col = studies))+
+    geom_line() + 
+    geom_point(size = 0.5) +
+    scale_colour_manual(name = "Number of\nStudies\naggregated", values = pal.colors) + 
+    theme_classic() + theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+    labs(x=expression(log[10]~italic("| E |")),
+         y=expression(log[e]~(likelihood)~x~10^{6})) 
+  p1
+}
+
+
+f1_plot <- function(combined_results_ll, pal.colors){
+  p2 <- ggplot(dat = combined_results_ll[combined_results_ll$n.edges<=50000 & combined_results_ll$n.edges>=500,], aes(x = log10(n.edges), y = f1_score, col = studies))+
+    geom_line() + geom_point(size = 0.5) + scale_colour_manual(name = "Number of\nStudies\naggregated", values = pal.colors) + 
+    theme_classic() + theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+    labs(x=expression(log[10]~italic("| E |")),
+         y=expression(F1-score)) 
+  p2
+}
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+
+gtex_weighted <- get_res_df("weighted_cov_networks", "GTEx")
+gtex_unweighted <- get_res_df("unweighted_cov_networks", "GTEx")
+gtex_correcting_first <- get_res_df("pooling_after_correcting", "GTEx")
+gtex_pooling_first <- get_res_df("correcting_after_pooling", "GTEx")
+
+p_ll_GTEx <- list()
+p_ll_GTEx[[1]] <- ll_plot(gtex_weighted, grn1) + ggtitle("GTEx - Weighted covariance aggregation") + ylim(c(-2920000, -2860000)) +
+  facet_zoom2(ylim = c(-2880000, -2848000), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))                                                                                                                         
+p_ll_GTEx[[2]] <- ll_plot(gtex_unweighted, grn1) + ggtitle("Unweighted covariance aggregation") + ylim(c(-2920000, -2860000)) +
+  facet_zoom2(ylim = c(-2880000, -2840000), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))  
+p_ll_GTEx[[3]] <- ll_plot(gtex_correcting_first, grn1) + ggtitle("Aggregating data\nadjusted for confounding") + ylim(c(-2920000, -2860000)) +
+  facet_zoom2(ylim = c(-2875000, -2845000), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))  
+p_ll_GTEx[[4]] <- ll_plot(gtex_pooling_first, grn1) + ggtitle("Aggregating data") + ylim(c(-2920000, -2860000)) +
+  facet_zoom2(ylim = c(-2895000, -2883200), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))  
+
+p_odds_GTEx <- list()
+p_odds_GTEx[[1]] <- f1_plot(gtex_weighted, grn1) + ggtitle("GTEx - Weighted covariance\naggregation") +
+  facet_zoom2(ylim = c(0.016, 0.025), xlim = c(4.2, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+p_odds_GTEx[[2]] <- f1_plot(gtex_unweighted, grn1) + ggtitle("Unweighted covariance\naggregation") + 
+  facet_zoom2(ylim = c(0.015, 0.03), xlim = c(4.2, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+p_odds_GTEx[[3]] <- f1_plot(gtex_correcting_first, grn1) + ggtitle("Aggregating data\nadjusted for confounding") +
+  facet_zoom2(ylim = c(0.015, 0.03), xlim = c(4.2, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+p_odds_GTEx[[4]] <- f1_plot(gtex_pooling_first, grn1) + ggtitle("Aggregating data\n") + 
+  facet_zoom2(ylim = c(0.01, 0.025), xlim = c(3.9, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+
+sra_normal_weighted <- get_res_df("weighted_cov_networks", "sra_normal")
+sra_normal_unweighted <- get_res_df("unweighted_cov_networks", "sra_normal")
+sra_normal_correcting_first <- get_res_df("pooling_after_correcting", "sra_normal")
+sra_normal_pooling_first <- get_res_df("correcting_after_pooling", "sra_normal")
+
+p_ll_sra <- list()
+p_ll_sra[[1]] <- ll_plot(sra_normal_weighted, orng1) + ggtitle("SRA - Weighted covariance aggregation") +
+  facet_zoom2(ylim = c(-2830000, -2720000), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))    
+p_ll_sra[[2]] <- ll_plot(sra_normal_unweighted, orng1) + ggtitle("Unweighted covariance\naggregation") + 
+  facet_zoom2(ylim = c(-2830000, -2720000), xlim = c(4.3, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6))  
+p_ll_sra[[3]] <- ll_plot(sra_normal_correcting_first, orng1) + ggtitle("Aggregating data\nadjusted for confounding") + 
+  facet_zoom2(ylim = c(-2830000, -2720000), xlim = c(4.2, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6)) 
+p_ll_sra[[4]] <- ll_plot(sra_normal_pooling_first, orng1) + ggtitle("Aggregating data") + 
+  facet_zoom2(ylim = c(-2865000, -2840000), xlim = c(4.2, 5), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
+  scale_y_continuous(labels = function(x) x/(10^6)) 
+
+p_odds_sra <- list()
+p_odds_sra[[1]] <- f1_plot(sra_normal_weighted, orng1) + ggtitle("SRA - Weighted covariance\naggregation") + 
+  facet_zoom2(ylim = c(0.02, 0.031), xlim = c(4.3, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+p_odds_sra[[2]] <- f1_plot(sra_normal_unweighted, orng1) + ggtitle("Unweighted covariance\naggregation") +
+  facet_zoom2(ylim = c(0.01, 0.032), xlim = c(4, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+p_odds_sra[[3]] <- f1_plot(sra_normal_correcting_first, orng1) + ggtitle("Aggregating data\nadjusted for confounding") +
+  facet_zoom2(ylim = c(0.01, 0.032), xlim = c(4, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+p_odds_sra[[4]] <- f1_plot(sra_normal_pooling_first, orng1) + ggtitle("Aggregating data\n") +
+  facet_zoom2(ylim = c(0.01, 0.022), xlim = c(4, 4.7), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+```{r, fig.width=9,fig.height=7}
+## Draw plots
+# Fig 2e
+p_ll_GTEx[[1]] <- p_ll_GTEx[[1]] + ggtitle("GTEx") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                           legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                           axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+p_ll_sra[[1]] <- p_ll_sra[[1]] + ggtitle("SRA") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+title <- ggdraw() + 
+  draw_label(
+    "Improvement in held-out log likelihood with\ndata aggregation (Weighted covariance)",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0, size = 16
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, plot_grid(p_ll_GTEx[[1]], p_ll_sra[[1]], nrow = 2),
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.2, 2)
+)
+
+```
+
+```{r,fig.width=9,fig.height=7}
+#Fig 2f
+p_odds_GTEx[[1]] <- p_odds_GTEx[[1]] + ggtitle("GTEx") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                               legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                               axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+p_odds_sra[[1]] <- p_odds_sra[[1]] + ggtitle("SRA") + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                                            legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                                            axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+title <- ggdraw() + 
+  draw_label(
+    "Improvement in F1-score with\ndata aggregation (Weighted covariance)",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0, size = 16
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, plot_grid(p_odds_GTEx[[1]], p_odds_sra[[1]], nrow = 2),
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.2, 2)
+)
+```
+```{r, fig.width=9,fig.height=7}
+# Fig 2g, h
+gtex_summ_res <- rbind(gtex_weighted[gtex_weighted$studies == "49", ], 
+                       gtex_unweighted[gtex_unweighted$studies == "49", ], 
+                       gtex_correcting_first[gtex_correcting_first$studies == "49", ], 
+                       gtex_pooling_first[gtex_pooling_first$studies == "49", ])
+
+p_10 <- ggplot(gtex_summ_res[gtex_summ_res$n.edges >= 500 & gtex_summ_res$n.edges <= 40000, ]) + 
+  geom_line(aes(x = log10(n.edges), y = ll_mean, col = aggregation_type)) + theme_classic() +
+  geom_point(aes(x = log10(n.edges), y = ll_mean, col = aggregation_type)) + 
+  scale_color_manual(name = "Aggregation type", values = RColorBrewer::brewer.pal(n = 4, name = "Set1")) + 
+  theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+  labs(x=expression(log[10]~italic("| E |")), y=expression(log[e]~(likelihood)~x~10^{6})) +
+  ggtitle("GTEx") + 
+  facet_zoom2(ylim = c(-2899000, -2860000), xlim = c(3.5, 4.6), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+  scale_y_continuous(labels = function(x) x/(10^6)) 
+
+p_11 <- ggplot(gtex_summ_res[gtex_summ_res$n.edges >= 500 & gtex_summ_res$n.edges <= 40000, ]) + 
+  geom_line(aes(x = log10(n.edges), y = f1_score, col = aggregation_type)) + theme_classic() +
+  geom_point(aes(x = log10(n.edges), y = f1_score, col = aggregation_type)) + 
+  scale_color_manual(name = "Aggregation type", values = RColorBrewer::brewer.pal(n = 4, name = "Set1")) + 
+  theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+  labs(x=expression(log[10]~italic("| E |")), y=expression(F1-score)) +
+  ggtitle("GTEx") + 
+  facet_zoom2(ylim = c(0.01, 0.024), xlim = c(4, 4.6), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+sra_summ_res <- rbind(sra_normal_weighted[sra_normal_weighted$studies == "566", ], 
+                      sra_normal_unweighted[sra_normal_unweighted$studies == "566", ], 
+                      sra_normal_correcting_first[sra_normal_correcting_first$studies == "566", ], 
+                      sra_normal_pooling_first[sra_normal_pooling_first$studies == "566", ])
+
+p_12 <- ggplot(sra_summ_res[sra_summ_res$n.edges >= 500 & sra_summ_res$n.edges <= 40000, ]) + 
+  geom_line(aes(x = log10(n.edges), y = ll_mean, col = aggregation_type)) + theme_classic() +
+  geom_point(aes(x = log10(n.edges), y = ll_mean, col = aggregation_type)) + 
+  scale_color_manual(name = "Aggregation type", values = RColorBrewer::brewer.pal(n = 4, name = "Set1")) + 
+  theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+  labs(x=expression(log[10]~italic("| E |")), y=expression(log[e]~(likelihood)~x~10^{6})) +
+  ggtitle("SRA") + 
+  facet_zoom2(ylim = c(-2840000, -2782000), xlim = c(4, 4.6), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
+  scale_y_continuous(labels = function(x) x/(10^6)) 
+
+p_14 <- ggplot(sra_summ_res[sra_summ_res$n.edges >= 500 & sra_summ_res$n.edges <= 40000, ]) + 
+  geom_line(aes(x = log10(n.edges), y = f1_score, col = aggregation_type)) + theme_classic() +
+  geom_point(aes(x = log10(n.edges), y = f1_score, col = aggregation_type)) + 
+  scale_color_manual(name = "Aggregation type", values = RColorBrewer::brewer.pal(n = 4, name = "Set1")) + 
+  theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+  labs(x=expression(log[10]~italic("| E |")), y=expression(F1-score)) +
+  ggtitle("SRA") + 
+  facet_zoom2(ylim = c(0.0095, 0.028), xlim = c(4, 4.6), zoom.size = 1, show.area = TRUE) + 
+  theme_bw() + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+p_14 <- p_14 + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                       legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                       axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") +
+  guides(color=guide_legend(nrow=2, byrow=TRUE))
+p_12 <- p_12 + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                       legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                       axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") +
+  guides(color=guide_legend(nrow=2, byrow=TRUE))
+p_10 <- p_10 + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                     legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                     axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") +
+  guides(color=guide_legend(nrow=2, byrow=TRUE))
+p_11 <- p_11 + theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                     legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                     axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE))
+agg_legend <- get_legend(p_10)
+p_10 <- p_10 + theme(legend.position = "none")
+p_12 <- p_12 + theme(legend.position = "none")
+p_11 <- p_11 + theme(legend.position = "none")
+p_14 <- p_14 + theme(legend.position = "none")
+plot_row_likelihood <- plot_grid(p_10, p_12, rel_widths = c(1, 1), nrow = 1)
+plot_row_odds <- plot_grid(p_11, p_14, rel_widths = c(1, 1), nrow = 1)
+
+title_1 <- ggdraw() + 
+  draw_label(
+    "Comparison  across aggregation strategies (Likelihood)",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0, size = 16
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+title_2 <- ggdraw() + 
+  draw_label(
+    "Comparison  across aggregation strategies (F1-score)",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0, size = 16
+  ) +
+  theme(# add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title_1, plot_row_likelihood, title_2, plot_row_odds, agg_legend,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.2, 1, 0.2, 1, 0.35)
+)
+```
+
+
+```{r, fig.width=9,fig.height=7}
+legend_GTEx <- get_legend(p_ll_GTEx[[1]])
+p_ll_GTEx <- lapply(p_ll_GTEx, function(p){
+  p + theme(legend.position="none")
+})
+
+p_odds_GTEx <- lapply(p_odds_GTEx, function(p){
+  p + theme(legend.position="none") 
+})
+
+legend_sra <- get_legend(p_ll_sra[[1]])
+p_ll_sra <- lapply(p_ll_sra, function(p){
+  p + theme(legend.position="none") 
+})
+
+p_odds_sra <- lapply(p_odds_sra, function(p){
+  p + theme(legend.position="none")
+})
+
+
+
+```
+
+```{r, fig.width=9,fig.height=7}
+plot_row_GTEx_ll <- plot_grid(p_ll_GTEx[[2]], p_ll_GTEx[[3]], p_ll_GTEx[[4]],legend_GTEx, labels = c("I", "II", "III"), ncol = 2)
+
+title <- ggdraw() + 
+  draw_label(
+    "GTEx: Held-out Log-likelihood",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_row_GTEx_ll,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1))
+```
+
+
+```{r, fig.width=9,fig.height=7}
+plot_row_GTEx_odds <- plot_grid(p_odds_GTEx[[2]], p_odds_GTEx[[3]], p_odds_GTEx[[4]], 
+                                legend_GTEx,
+                                labels = c("I", "II", "III", ""), nrow = 2)
+title <- ggdraw() + 
+  draw_label(
+    "GTEx: F1 score",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_row_GTEx_odds,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+```
+
+
+```{r, fig.width=9,fig.height=7}
+plot_row_sra_ll <- plot_grid(p_ll_sra[[2]], 
+                             p_ll_sra[[3]], p_ll_sra[[4]], 
+                             legend_sra,
+                             labels = c("I", "II", "III", ""), nrow = 2)
+title <- ggdraw() + 
+  draw_label(
+    "SRA: Held-out Log-likelihood",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_row_sra_ll,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1))
+```
+
+
+```{r, fig.width=9,fig.height=7}
+plot_row_sra_odds <- plot_grid(p_odds_sra[[2]], p_odds_sra[[3]], p_odds_sra[[4]], 
+                               legend_sra,
+                               labels = c("I", "II", "III", ""), nrow = 2)
+title <- ggdraw() + 
+  draw_label(
+    "SRA: F1 score",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_row_sra_odds,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+```
+
+```{r}
+# Behavior of network density
+gtex_studies_samples_df <- data.frame(nStudies = c(1, 10, 20, 30, 40, 49), 
+                                      nSamples = c(94, 1676, 4034, 7248, 12227, 18824))
+
+sra_studies_samples_df <- data.frame(nStudies = c(1, 100, 200, 300, 400, 500, 566), 
+                                      nSamples = c(15, 2355, 5660, 9802, 15269, 24432, 44995))
+
+add_sample_size <- function(res, ref){
+  nSamples <- c()
+  for(i in c(1:dim(res)[1])){
+    nSamples[i] <- ref$nSamples[ref$nStudies == res$studies[i]]
+  }
+  res$nSamples <- nSamples
+  res
+}
+
+gtex_weighted <- add_sample_size(gtex_weighted, gtex_studies_samples_df)
+gtex_unweighted <- add_sample_size(gtex_unweighted, gtex_studies_samples_df)
+gtex_pooling_first <- add_sample_size(gtex_pooling_first, gtex_studies_samples_df)
+gtex_correcting_first <- add_sample_size(gtex_correcting_first, gtex_studies_samples_df)
+
+sra_normal_weighted <- add_sample_size(sra_normal_weighted, sra_studies_samples_df)
+sra_normal_unweighted <- add_sample_size(sra_normal_unweighted, sra_studies_samples_df)
+sra_normal_pooling_first <- add_sample_size(sra_normal_pooling_first, sra_studies_samples_df)
+sra_normal_correcting_first <- add_sample_size(sra_normal_correcting_first, sra_studies_samples_df)
+
+gtex_weighted$lambda <- as.numeric(gtex_weighted$lambda)
+gtex_unweighted$lambda <- as.numeric(gtex_unweighted$lambda)
+gtex_pooling_first$lambda <- as.numeric(gtex_pooling_first$lambda)
+gtex_correcting_first$lambda <- as.numeric(gtex_correcting_first$lambda)
+
+sra_normal_weighted$lambda <- as.numeric(sra_normal_weighted$lambda)
+sra_normal_unweighted$lambda <- as.numeric(sra_normal_unweighted$lambda)
+sra_normal_pooling_first$lambda <- as.numeric(sra_normal_pooling_first$lambda)
+sra_normal_correcting_first$lambda <- as.numeric(sra_normal_correcting_first$lambda)
+
+
+
+get_rel_sample_size_nDens <- function(net_res){
+  mean_coeff_weighted <- c()
+  sd_coeff_weighted <- c()
+  lambda <- c(0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20, 0.22, 
+              0.24, 0.26, 0.28, 0.30, 0.32, 0.34, 0.36, 0.38, 
+              0.40, 0.42, 0.44, 0.46, 0.48, 0.50, 0.52, 0.54, 
+              0.56, 0.58, 0.60, 0.62, 0.64, 0.66, 0.68, 0.70, 
+              0.72, 0.74, 0.76, 0.78, 0.80, 0.82, 0.84, 0.86, 0.88, 0.90)
+  for(i in c(1:length(lambda))){
+    df <- net_res[net_res$lambda == lambda[i], ]
+    res <- summary(lm(n.edges ~ nSamples, df))
+    mean_coeff_weighted[i] <- res$coefficients["nSamples", "Estimate"]
+    sd_coeff_weighted[i] <- res$coefficients["nSamples", "Std. Error"]
+  }
+  coeff_res <- data.frame(lambda = lambda, mean_coeff = mean_coeff_weighted, 
+                               sd_coeff = sd_coeff_weighted)
+  coeff_res
+}
+
+gtex_weighted_coeff_res <- get_rel_sample_size_nDens(gtex_weighted)
+gtex_unweighted_coeff_res <- get_rel_sample_size_nDens(gtex_unweighted)
+gtex_correcting_first_coeff_res <- get_rel_sample_size_nDens(gtex_correcting_first)
+gtex_pooling_first_coeff_res <- get_rel_sample_size_nDens(gtex_pooling_first)
+
+p1 <- ggplot(gtex_weighted_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#984EA3") + theme_classic() + 
+      geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#984EA3") + ggtitle("Weighted covariance\naggregation") +
+      theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p2 <- ggplot(gtex_unweighted_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#4DAF4A") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#4DAF4A") + ggtitle("Unweighted covariance\naggregation") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p3 <- ggplot(gtex_correcting_first_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#377EB8") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#377EB8") + ggtitle("Aggregating data\nadjusted for confounding") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p4 <- ggplot(gtex_pooling_first_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#E41A1C") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#E41A1C") + ggtitle("Aggregating data\n") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+
+sra_normal_weighted_coeff_res <- get_rel_sample_size_nDens(sra_normal_weighted)
+sra_normal_unweighted_coeff_res <- get_rel_sample_size_nDens(sra_normal_unweighted)
+sra_normal_correcting_first_coeff_res <- get_rel_sample_size_nDens(sra_normal_correcting_first)
+sra_normal_pooling_first_coeff_res <- get_rel_sample_size_nDens(sra_normal_pooling_first)
+
+p5 <- ggplot(sra_normal_weighted_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#984EA3") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#984EA3") + ggtitle("Weighted covariance\naggregation") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p6 <- ggplot(sra_normal_unweighted_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#4DAF4A") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#4DAF4A") + ggtitle("Unweighted covariance\naggregation") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p7 <- ggplot(sra_normal_correcting_first_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#377EB8") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#377EB8") + ggtitle("Aggregating data\nadjusted for confounding") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+p8 <- ggplot(sra_normal_pooling_first_coeff_res, aes(x = lambda, y = mean_coeff)) + geom_point(color = "#E41A1C") + theme_classic() + 
+  geom_errorbar(aes(ymin=mean_coeff-sd_coeff, ymax=mean_coeff+sd_coeff), width=.005, color = "#E41A1C") + ggtitle("Aggregating data\n") +
+  theme(plot.title = element_text(face = "bold")) + labs(x=expression(lambda), y=expression(beta:italic("|E|")[N]==mu~+~beta%.%N~+~epsilon))
+```
+
+```{r, fig.height=3, fig.width=11}
+GTEx_row <- plot_grid(p4, p3, p2, p1, labels = c("I", "II", "III", "IV"), nrow = 1)
+SRA_row <- plot_grid(p8, p7, p6, p5, labels = c("I", "II", "III", "IV"), nrow = 1)
+
+title <- ggdraw() + 
+  draw_label(
+    "GTEx: Change in network density with increasing sample size",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, GTEx_row,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+
+```
+```{r, fig.height=3, fig.width=11}
+title <- ggdraw() + 
+  draw_label(
+    "SRA: Change in network density with increasing sample size",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, SRA_row,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+```
+
