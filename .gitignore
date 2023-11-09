@@ -2,6 +2,7 @@
 data/raw
 data/replicates_merged
 data/rpkm
+data/all_counts.rds
 # Do not upload uncorrected and corrected expression matrices
 data/adipose/all/uncorrected_expression/*.rds
 data/airway/all/uncorrected_expression/*.rds
