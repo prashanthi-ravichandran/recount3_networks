@@ -239,8 +239,8 @@ data/skin/GTEx/weighted_covariances/*.rds
 data/stomach/GTEx/weighted_covariances/*.rds
 data/vascular/GTEx/weighted_covariances/*.rds
 
-data/blood/GTEx/weighted_covariances/only_sra/*.rds
-data/central_nervous_system/GTEx/weighted_covariances/only_sra/*.rds
+data/blood/all/weighted_covariances/only_sra/*.rds
+data/central_nervous_system/all/weighted_covariances/only_sra/*.rds
 # Don't add individual networks
 results/weighted_cov_networks/adipose/all/net_11/lambda*.rds
 results/weighted_cov_networks/airway/all/net_8/lambda*.rds
