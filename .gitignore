@@ -131,6 +131,7 @@ data/GTEx/single_covariances/*.rds
 data/GTEx/pooling_after_correcting/*.rds
 data/GTEx/correcting_after_pooling/*.rds
 data/GTEx/weighted_covariances/*.rds
+data/GTEx/unweighted_covariances/*.rds
 
 data/sra_normal/uncorrected_expression/*.rds
 data/sra_normal/corrected_expression/*.rds
@@ -138,7 +139,7 @@ data/sra_normal/single_covariances/*.rds
 data/sra_normal/pooling_after_correcting/*.rds
 data/sra_normal/correcting_after_pooling/*.rds
 data/sra_normal/weighted_covariances/*.rds
-
+data/sra_normal/unweighted_covariances/*.rds
 # Do not upload all the derived covariance matrices, will be provided in Zenodo
 data/adipose/all/single_covariances/*.rds
 data/airway/all/single_covariances/*.rds
@@ -238,6 +239,8 @@ data/skin/GTEx/weighted_covariances/*.rds
 data/stomach/GTEx/weighted_covariances/*.rds
 data/vascular/GTEx/weighted_covariances/*.rds
 
+data/blood/GTEx/weighted_covariances/only_sra/*.rds
+data/central_nervous_system/GTEx/weighted_covariances/only_sra/*.rds
 # Don't add individual networks
 results/weighted_cov_networks/adipose/all/net_11/lambda*.rds
 results/weighted_cov_networks/airway/all/net_8/lambda*.rds
