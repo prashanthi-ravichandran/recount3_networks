@@ -1,0 +1,243 @@
+---
+title: "Evaluate data aggregation for consensus and context-specific networks"
+output: html_document
+date: '2023-11-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+```
+
+```{r}
+library(Rtsne)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(stringr)
+library(rstatix)
+library(ggpubr)
+
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Properties of consensus network
+
+This document contains scripts to reproduce Figure 3. We visualize the impact of data aggregation on the inference of consensus and context-specific networks. We will begin by describing sample characteristics of consensus networks
+
+```{r, fig.height=4, fig.width=9}
+datDir <- paste0(homeDir, "data/")
+all_metadata <- readRDS(paste0(datDir, "all_consensus/study_metaData.rds"))
+normal_metadata <- readRDS(paste0(datDir, "normal_consensus/study_metaData.rds"))
+cancer_metadata <- readRDS(paste0(datDir, "cancer_consensus/study_metaData.rds"))
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+networks <- c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus")
+nSamples <- c(sum(all_metadata$n), sum(normal_metadata$n), sum(cancer_metadata$n))
+nStudies <- c(dim(all_metadata)[1], dim(normal_metadata)[1], dim(cancer_metadata)[1])
+medianSampleSize <- c(median(all_metadata$n), median(normal_metadata$n), median(cancer_metadata$n))
+summary_df <- data.frame(networks, nSamples, nStudies, medianSampleSize)
+summary_df$networks <- factor(summary_df$networks, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+
+p1 <- ggplot(summary_df, aes(x = networks, y = nSamples, fill = networks)) + geom_bar(stat = "identity") +
+  theme_classic() + scale_fill_brewer(name = "", palette = "Dark2") + xlab("") + ylab("") + ggtitle("Number of samples") +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text.y = element_text(size = 12, face = "bold"), axis.text.x = element_blank(), 
+          legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.ticks.x = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p2 <- ggplot(summary_df, aes(x = networks, y = nStudies, fill = networks)) + geom_bar(stat = "identity") + ylim(0, 1000) +
+  theme_classic() + scale_fill_brewer(name = "", palette = "Dark2") + xlab("") + ylab("") + ggtitle("Number of studies") +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"),  axis.text.x = element_blank(), 
+          legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.ticks.x = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), legend.position = "none")
+  
+p3 <- ggplot(summary_df, aes(x = networks, y = medianSampleSize, fill = networks)) + geom_bar(stat = "identity") +
+  theme_classic() + scale_fill_brewer(name = "", palette = "Dark2") + xlab("") + ylab("") + ggtitle("Median sample size") +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), axis.text.x = element_blank(), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.ticks.x = element_blank(),
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "none")
+
+legend_sample <- get_legend(p1)
+p1 <- p1 + theme(legend.position = "none")
+plot_grid(plot_grid(p1, p2, p3, nrow = 1), legend_sample, nrow = 2, rel_heights = c(1, 0.2))
+
+```
+
+## Reproducibility of known pathways 
+
+Plot the F1 scores of consensus networks when compared to canonical pathways
+
+```{r, fig.width=6, fig.height=3}
+resDir <- paste0(homeDir, "results/weighted_cov_networks/")
+all_consensus_res <- readRDS(paste0(resDir, "all_consensus/net_966/oddsRatio_966.rds"))
+normal_consensus_res <- readRDS(paste0(resDir, "normal_consensus/net_629/oddsRatio_629.rds"))
+cancer_consensus_res <- readRDS(paste0(resDir, "cancer_consensus/net_386/oddsRatio_386.rds"))
+
+all_consensus_res <- all_consensus_res[ ,!colnames(all_consensus_res) == "F1"]
+cancer_consensus_res <- cancer_consensus_res[ ,!colnames(cancer_consensus_res) == "F1"]
+
+all_consensus_res$F1score <- (2*all_consensus_res$precision*all_consensus_res$recall)/(all_consensus_res$precision + all_consensus_res$recall)
+normal_consensus_res$F1score <- (2*normal_consensus_res$precision*normal_consensus_res$recall)/(normal_consensus_res$precision + normal_consensus_res$recall)
+cancer_consensus_res$F1score <- (2*cancer_consensus_res$precision*cancer_consensus_res$recall)/(cancer_consensus_res$precision + cancer_consensus_res$recall)
+
+all_consensus_res$type <- "Universal consensus"
+normal_consensus_res$type <- "Non-cancerous consensus"
+cancer_consensus_res$type <- "Cancerous consensus"
+consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res)
+consensus_res$type <- factor(consensus_res$type, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+
+ggplot(dat = consensus_res[consensus_res$n.edges<=500000 & consensus_res$n.edges>=5000,], aes(x = log10(n.edges), y = F1score, col = type, shape = type))+
+  geom_line() + geom_point(size = 2) + scale_colour_brewer(name = "", palette = "Dark2") + ggtitle("F1-score of consensus networks") +
+  scale_shape_manual(name = "", values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16,"Cancerous consensus" = 17)) +
+  theme_classic() +  labs(x=expression(log[10]~italic("| E |")), y=expression(F1-score)) +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), axis.text.x = element_blank(), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.ticks.x = element_blank(),
+        axis.title = element_text(size = 12, face = "bold"))
+
+```
+## Context-specific networks
+
+Plot the increase in held-out data likelihood with aggregation in blood and central nervous system specific networks
+
+```{r, fig.width=4, fig.height=5}
+get_res_df <- function(tissue, agg_levels){
+  resDir <- paste0(resDir, tissue, "/all/only_sra/")
+  
+  fn_ll <- paste0(resDir, "net_", agg_levels, "/ll_", agg_levels, ".rds")
+  results_ll <- lapply(fn_ll, readRDS)
+  names(results_ll) <- agg_levels
+  combined_results_ll <- bind_rows(results_ll, .id = 'studies')
+  combined_results_ll$studies <- factor(combined_results_ll$studies, levels = agg_levels)
+  combined_results_ll$tissue <- tissue
+  combined_results_ll
+}
+
+blood_ll_df <- get_res_df("blood", c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 64))
+cns_ll_df <- get_res_df("central_nervous_system", c(1, 5, 10, 15, 20, 25, 30, 35, 40))
+
+ll_plot <- function(combined_results_ll, pal.colors){
+  p1 <- ggplot(dat = combined_results_ll[combined_results_ll$n.edges<=100000 & combined_results_ll$n.edges>=500,], aes(x = log10(n.edges), y = ll_mean, col = studies))+
+    geom_line() + 
+    geom_point(size = 0.5) +
+    scale_colour_manual(name = "Number of\nStudies\naggregated", values = pal.colors) + 
+    theme_classic() + 
+    #theme(text = element_text(size=10), legend.text=element_text(size=8), legend.title = element_text(size = 10)) + 
+    labs(x=expression(log[10]~italic("| E |")),
+         y=expression(log[e]~(likelihood)~x~10^{6})) 
+  p1
+}
+
+ll_plot(blood_ll_df, colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "PuBu"))(18)[-c(1:4)]) + ggtitle("Held-out loglikelihood increases\nwith data aggregation in blood") + 
+  guides(col=guide_legend(ncol=8)) +   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                             legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                             axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+  
+
+ll_plot(cns_ll_df, colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "PuBu"))(13)[-c(1:4)]) + ggtitle("Held-out loglikelihood increases\nwith data aggregation in CNS") + 
+  guides(col=guide_legend(ncol=8)) +   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+                                             legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+                                             axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+```
+
+Compare the enrichment of known tissue-specific pathways in context-specific networks inferred only from GTEx vs all data
+
+```{r, fig.height=4, fig.width=5}
+blood_all <- readRDS(paste0(resDir, "blood/all/net_65/oddsRatio.rds"))
+blood_GTEx <- readRDS(paste0(resDir, "blood/GTEx/net_1/oddsRatio.rds"))
+cns_all <- readRDS(paste0(resDir, "central_nervous_system/all/net_53/oddsRatio.rds"))
+cns_GTEx <- readRDS(paste0(resDir, "central_nervous_system/GTEx/net_13/oddsRatio.rds"))
+adipose_all <- readRDS(paste0(resDir, "adipose/all/net_11/oddsRatio.rds"))
+adipose_GTEx <- readRDS(paste0(resDir, "adipose/GTEx/net_2/oddsRatio.rds"))
+skin_all <- readRDS(paste0(resDir, "skin/all/net_20/oddsRatio.rds"))
+skin_GTEx <- readRDS(paste0(resDir, "skin/GTEx/net_2/oddsRatio.rds"))
+lung_all <- readRDS(paste0(resDir, "lung/all/net_10/oddsRatio.rds"))
+lung_GTEx <- readRDS(paste0(resDir, "lung/GTEx/net_1/oddsRatio.rds"))
+liver_all <- readRDS(paste0(resDir, "liver/all/net_28/oddsRatio.rds"))
+liver_GTEx <- readRDS(paste0(resDir, "liver/GTEx/net_1/oddsRatio.rds"))
+
+
+blood_all$Agg_type <- "Tissue consensus"
+blood_GTEx$Agg_type <- "GTEx only"
+cns_all$Agg_type <- "Tissue consensus"
+cns_GTEx$Agg_type <- "GTEx only"
+adipose_all$Agg_type <- "Tissue consensus"
+adipose_GTEx$Agg_type <- "GTEx only"
+skin_all$Agg_type <- "Tissue consensus"
+skin_GTEx$Agg_type <- "GTEx only"
+lung_all$Agg_type <- "Tissue consensus"
+lung_GTEx$Agg_type <- "GTEx only"
+liver_all$Agg_type <- "Tissue consensus"
+liver_GTEx$Agg_type <- "GTEx only"
+
+blood_all$Tissue <- "Blood"
+blood_GTEx$Tissue  <- "Blood"
+cns_all$Tissue  <- "CNS"
+cns_GTEx$Tissue  <- "CNS"
+adipose_all$Tissue  <- "Adipose"
+adipose_GTEx$Tissue  <- "Adipose"
+skin_all$Tissue  <- "Skin"
+skin_GTEx$Tissue  <- "Skin"
+lung_all$Tissue  <- "Lung"
+lung_GTEx$Tissue  <- "Lung"
+liver_all$Tissue  <- "Liver"
+liver_GTEx$Tissue  <- "Liver"
+
+res <- rbind(blood_all, blood_GTEx, cns_all, cns_GTEx, 
+             adipose_all, adipose_GTEx, skin_all, skin_GTEx, 
+             lung_all, lung_GTEx, liver_all, liver_GTEx)
+res$Tissue <- factor(res$Tissue, levels = c("Adipose", "Blood", "CNS", "Liver", "Lung", "Skin"))
+res$Agg_type <- factor(res$Agg_type, levels = c("GTEx only", "Tissue consensus"))
+res <- res[res$nEdges >= 5000, ]
+res <- res[res$nEdges <= 30000, ]
+
+stat.test <- res %>%
+  group_by(Tissue) %>%
+  wilcox_test(odds_ratio ~ Agg_type) %>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance("p.adj")
+
+stat.test <- stat.test %>%
+  add_xy_position(x = "Tissue", dodge = 0.8)
+stat.test$p <- sprintf("%.2f", stat.test$p)
+
+ggplot(res) + 
+  geom_boxplot(mapping = aes(x = Tissue, y = odds_ratio, fill = Agg_type), outlier.size = 0.5) + theme_classic() +  
+  xlab("") + ylab("Odds ratio") + scale_fill_brewer(name = "Samples aggregated", palette = "Paired") + 
+  stat_pvalue_manual(stat.test,  label = "p", tip.length = 0.01, label.size = 4, vjust = 1.5, hjust = -0.2) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  ggtitle("Replication of known protein-protein interactions\nin tissue-specific networks") +
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + coord_flip()
+
+```
+
+```{r}
+sessionInfo()
+```
+
