@@ -1,0 +1,577 @@
+---
+title: "Enrichment of GO terms among network central nodes"
+output: html_document
+date: '2023-11-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+library(ggplot2)
+library(RColorBrewer)
+library(grid)
+library(gridExtra)
+library(dplyr)
+library(cowplot)
+library(stringr)
+
+```
+
+
+This document regenerates the plots pertaining to the enrichment of specific GO terms in consensus and context-specific central nodes. 
+
+```{r}
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+#homeDir <- ""
+consensus_res <- readRDS(paste0(homeDir, "results/enrichment_plots/consensus_res.rds"))
+neural_res <- readRDS(paste0(homeDir, "results/enrichment_plots/neural_res.rds"))
+blood_res <- readRDS(paste0(homeDir, "results/enrichment_plots/blood_res.rds"))
+skin_res <- readRDS(paste0(homeDir, "results/enrichment_plots/skin_res.rds"))
+adipose_res <- readRDS(paste0(homeDir, "results/enrichment_plots/adipose_res.rds"))
+liver_res <- readRDS(paste0(homeDir, "results/enrichment_plots/liver_res.rds"))
+lung_res <- readRDS(paste0(homeDir, "results/enrichment_plots/lung_res.rds"))
+
+
+pathways <- readRDS(paste0(homeDir, "results/enrichment_plots/pathways.rds"))
+colnames(consensus_res)[dim(consensus_res)[2]] <- "Samples aggregated"
+colnames(neural_res)[dim(neural_res)[2]] <- "Samples aggregated"
+colnames(blood_res)[dim(blood_res)[2]] <- "Samples aggregated"
+colnames(skin_res)[dim(skin_res)[2]] <- "Samples aggregated"
+colnames(adipose_res)[dim(adipose_res)[2]] <- "Samples aggregated"
+colnames(lung_res)[dim(lung_res)[2]] <- "Samples aggregated"
+colnames(liver_res)[dim(liver_res)[2]] <- "Samples aggregated"
+
+```
+
+## Ubiquituous biological processes
+
+```{r, fig.width= 12, fig.height=4}
+consensus_res$`Samples aggregated` <- as.character(consensus_res$`Samples aggregated`)
+consensus_res$`Samples aggregated`[consensus_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+consensus_res$`Samples aggregated`[consensus_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+consensus_res$`Samples aggregated`[consensus_res$`Samples aggregated` == "Cancerous samples"] <- "Cancerous consensus"
+consensus_res$`Samples aggregated` <- factor(consensus_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus", "CNS", "Blood"))
+
+p1 <- ggplot(consensus_res, aes(x = degree, y = `GO:0000278`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0000278"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 14, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") +
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+p2 <- ggplot(consensus_res, aes(x = degree, y = `GO:0051276`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0051276"])) +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20))+ 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 14, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+p3 <- ggplot(consensus_res, aes(x = degree, y = `GO:0033043`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle("Regulation of\nOrganelle Organization")  + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 14, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+p4 <- ggplot(consensus_res, aes(x = degree, y = `GO:0007017`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0007017"]))  + theme(plot.title = element_text(face = "bold"))+
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 14, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+p5 <- ggplot(consensus_res, aes(x = degree, y = `GO:0061640`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle("Cytoskeleton-dependent\nCytokinesis")  +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 14, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+p6 <- ggplot(consensus_res, aes(x = degree, y = `GO:0006974`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle("Cellular Response to\nDNA Damage Stimulus") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(plot.title = element_text(face="bold", size = 14), axis.text.x = element_blank(), 
+        legend.text = element_text(size = 14, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+  guides(shape=guide_legend(""), colour=guide_legend(""))
+
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+legend_samples <- get_legend(p1) 
+p1 <- p1 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+p2 <- p2 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+p3 <- p3 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+p4 <- p4 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+p5 <- p5 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+p6 <- p6 + theme(legend.position="none", axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+
+plot_consensus_1 <- plot_grid(plot_grid(p4, p2, p3, nrow = 1, labels = c('I', 'II', 'III'), label_size = 16), legend_samples, nrow = 2, rel_heights = c(4, 0.8))
+plot_consensus_2 <- plot_grid(plot_grid(p1, p5, p6, nrow = 1, labels = c('I', 'II', 'III'), label_size = 16), legend_samples, nrow = 2, rel_heights = c(4, 0.8))
+
+plot_consensus_1
+plot_consensus_2
+
+```
+
+## Neural Pathways
+
+```{r, fig.width= 12, fig.height=4}
+neural_res$`Samples aggregated` <- as.character(neural_res$`Samples aggregated`)
+neural_res$`Samples aggregated`[neural_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+neural_res$`Samples aggregated`[neural_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+neural_res$`Samples aggregated` <- factor(neural_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "CNS (GTEx)", "CNS", "Blood"))
+neural_res <- neural_res[ ,unique(colnames(neural_res))]
+
+p7 <- ggplot(neural_res, aes(x = degree, y = `GO:0099175`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0099175"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p8 <- ggplot(neural_res, aes(x = degree, y = `GO:0007411`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0007411"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p9 <- ggplot(neural_res, aes(x = degree, y = `GO:0007417`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0007417"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p_e1 <- ggplot(neural_res, aes(x = degree, y = `GO:0051610`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0051610"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p_e2 <- ggplot(neural_res, aes(x = degree, y = `GO:0090494`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0090494"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p_e3 <- ggplot(neural_res, aes(x = degree, y = `GO:0097154`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0097154"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "CNS (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+legend_samples <- get_legend(p7) 
+p7 <- p7 + theme(legend.position="none")
+p8 <- p8 + theme(legend.position="none")
+p9 <- p9 + theme(legend.position="none")
+p_e1 <- p_e1 + theme(legend.position="none")
+p_e2 <- p_e2 + theme(legend.position="none")
+p_e3 <- p_e3 + theme(legend.position="none")
+
+title <- ggdraw() + 
+  draw_label(
+    "Central nervous system",
+    fontface = 'bold',
+    size = 16,
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+p9 <- p9 + ggtitle("CNS development")
+plot_grid(
+  title, plot_grid( p8, p9, p_e1, nrow = 1, labels = c("I", "II", "III"),label_size = 16), legend_samples,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1, 0.2)
+)
+
+
+```
+
+## Blood pathways
+
+```{r, fig.width=12, fig.height=4}
+blood_res$`Samples aggregated` <- as.character(blood_res$`Samples aggregated`)
+blood_res$`Samples aggregated`[blood_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+blood_res$`Samples aggregated`[blood_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+blood_res$`Samples aggregated` <- factor(blood_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Blood (GTEx)", "Blood", "CNS"))
+blood_res <- blood_res[ ,unique(colnames(blood_res))] 
+p10 <- ggplot(blood_res, aes(x = degree, y = `GO:0050900`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0050900"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "Blood (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p11 <- ggplot(blood_res, aes(x = degree, y = `GO:0045321`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0045321"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "Blood (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p12 <- ggplot(blood_res, aes(x = degree, y = `GO:0007596`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Set1") + xlab("Degree") + ylab("Odds Ratio") +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0007596"])) + 
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "CNS" = 17, "Blood (GTEx)" = 18, "Blood" = 20)) +
+  geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+legend_samples <- get_legend(p10) 
+p10 <- p10 + theme(legend.position="none")
+p11 <- p11 + theme(legend.position="none")
+p12 <- p12 + theme(legend.position="none")
+
+title <- ggdraw() + 
+  draw_label(
+    "Blood",
+    fontface = 'bold',
+    size = 16, 
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_grid(p10, p11, p12, nrow = 1, labels = c("I", "II", "III"), label_size = 16), legend_samples, 
+  ncol = 1, rel_heights = c(0.1, 1, 0.2)
+)
+
+
+```
+
+## Skin pathways
+
+```{r, fig.width=12, fig.height=4}
+skin_res$`Samples aggregated` <- as.character(skin_res$`Samples aggregated`)
+skin_res$`Samples aggregated`[skin_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+skin_res$`Samples aggregated`[skin_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+skin_res$`Samples aggregated` <- factor(skin_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Skin (GTEx)", "Skin", "Blood", "CNS"))
+skin_res <- skin_res[ ,unique(colnames(skin_res))]
+p13 <- ggplot(skin_res, aes(x = degree, y = `GO:0061436`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Skin" = 17, "Skin (GTEx)" = 18, "CNS" = 19, "Blood" = 20))  +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0061436"])) + geom_hline(yintercept = 1, color="black", linetype="dashed")+
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p14 <- ggplot(skin_res, aes(x = degree, y = `GO:0098773`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Skin" = 17, "Skin (GTEx)" = 18, "CNS" = 19, "Blood" = 20))  +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0098773"])) + geom_hline(yintercept = 1, color="black", linetype="dashed")+
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p15 <- ggplot(skin_res, aes(x = degree, y = `GO:0043588`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Skin" = 17, "Skin (GTEx)" = 18, "CNS" = 19, "Blood" = 20)) +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0043588"])) + geom_hline(yintercept = 1, color="black", linetype="dashed")+
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+legend_samples <- get_legend(p13) 
+p13 <- p13 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p14 <- p14 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p15 <- p15 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+
+title <- ggdraw() + 
+  draw_label(
+    "Skin",
+    fontface = 'bold',
+    size = 16,
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_grid(p14, p13, nrow = 1, labels = c("(I)", "(II)")), legend_samples,
+  ncol = 1, rel_heights = c(0.1, 1, 0.2)
+)
+
+
+```
+
+## Lung Pathways
+
+```{r, fig.width=12, fig.height=4}
+lung_res$`Samples aggregated` <- as.character(lung_res$`Samples aggregated`)
+lung_res$`Samples aggregated`[lung_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+lung_res$`Samples aggregated`[lung_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+lung_res$`Samples aggregated` <- factor(lung_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Lung (GTEx)", "Lung", "Blood", "CNS"))
+lung_res <- lung_res[ ,unique(colnames(lung_res))]
+
+p16 <- ggplot(lung_res, aes(x = degree, y = `GO:0060428`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Lung" = 17, "Lung (GTEx)" = 18, "CNS" = 19, "Blood" = 20)) +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0060428"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p17 <- ggplot(lung_res, aes(x = degree, y = `GO:0015671`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Lung" = 17, "Lung (GTEx)" = 18, "CNS" = 19, "Blood" = 20))+
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0015671"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p18 <- ggplot(lung_res, aes(x = degree, y = `GO:0060479`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Lung" = 17, "Lung (GTEx)" = 18, "CNS" = 19, "Blood" = 20)) +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0060479"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+legend_samples <- get_legend(p16) 
+p16 <- p16 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p17 <- p17 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p18 <- p18 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+
+title <- ggdraw() + 
+  draw_label(
+    "Lung",
+    fontface = 'bold',
+    size = 16,
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_grid(p16, p17, nrow = 1, labels = c("(I)", "(II)")), legend_samples,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1, 0.2)
+)
+
+
+```
+
+## Liver Pathways
+
+```{r, fig.width=12, fig.height=4}
+liver_res$`Samples aggregated` <- as.character(liver_res$`Samples aggregated`)
+liver_res$`Samples aggregated`[liver_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+liver_res$`Samples aggregated`[liver_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+liver_res$`Samples aggregated` <- factor(liver_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Liver (GTEx)", "Liver", "Blood", "CNS"))
+liver_res <- liver_res[ ,unique(colnames(liver_res))]
+
+p19 <- ggplot(liver_res, aes(x = degree, y = `GO:0001889`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Liver" = 17, "Liver (GTEx)" = 18, "CNS" = 19, "Blood" = 20))+
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0001889"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p20 <- ggplot(liver_res, aes(x = degree, y = `GO:0006641`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Liver" = 17, "Liver (GTEx)" = 18, "CNS" = 19, "Blood" = 20)) +
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0006641"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p21 <- ggplot(liver_res, aes(x = degree, y = `GO:0033762`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Liver" = 17, "Liver (GTEx)" = 18, "CNS" = 19, "Blood" = 20))+
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0033762"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+legend_samples <- get_legend(p19) 
+p19 <- p19 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p20 <- p20 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p21 <- p21 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+
+title <- ggdraw() + 
+  draw_label(
+    "Liver",
+    fontface = 'bold',
+    size = 16,
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_grid(p19, p20, nrow = 1, labels = c("(I)", "(II)")), legend_samples,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1, 0.2)
+)
+```
+
+## Adipose pathways
+
+```{r, fig.width=12, fig.height=4}
+adipose_res$`Samples aggregated` <- as.character(adipose_res$`Samples aggregated`)
+adipose_res$`Samples aggregated`[adipose_res$`Samples aggregated` == "All samples"] <- "Universal consensus"
+adipose_res$`Samples aggregated`[adipose_res$`Samples aggregated` == "Non-cancerous samples"] <- "Non-cancerous consensus"
+adipose_res$`Samples aggregated` <- factor(adipose_res$`Samples aggregated`, levels = c("Universal consensus", "Non-cancerous consensus", "Adipose (GTEx)", "Adipose", "Blood", "CNS"))
+adipose_res <- adipose_res[ ,unique(colnames(adipose_res))]
+
+p22 <- ggplot(adipose_res, aes(x = degree, y = `GO:0060191`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Adipose" = 17, "Adipose (GTEx)" = 18, "CNS" = 19, "Blood" = 20))+
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0060191"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p23 <- ggplot(adipose_res, aes(x = degree, y = `GO:0033762`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point() + geom_line() +
+  theme_classic() + scale_color_brewer(palette="Dark2") + xlab("Degree") + ylab("Odds Ratio") +
+  scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
+                                "Adipose" = 17, "Adipose (GTEx)" = 18, "CNS" = 19, "Blood" = 20))+
+  ggtitle(str_to_title(pathways$go_name[pathways$go_id == "GO:0033762"])) + geom_hline(yintercept = 1, color="black", linetype="dashed") +
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+legend_samples <- get_legend(p22) 
+p22 <- p22 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+p23 <- p23 + theme(legend.position="none", plot.title = element_text(face = "bold"))
+title <- ggdraw() + 
+  draw_label(
+    "Adipose",
+    fontface = 'bold',
+    size = 16,
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+
+plot_grid(
+  title, plot_grid(p22, p23,nrow = 1, labels = c("(I)", "(II)")), legend_samples,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1, 0.2)
+)
+```
+
