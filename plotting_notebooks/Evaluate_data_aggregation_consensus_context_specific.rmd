@@ -117,11 +117,12 @@ ggplot(dat = consensus_res[consensus_res$n.edges<=500000 & consensus_res$n.edges
         axis.title = element_text(size = 12, face = "bold"))
 
 ```
+
 ## Context-specific networks
 
 Plot the increase in held-out data likelihood with aggregation in blood and central nervous system specific networks
 
-```{r, fig.width=4, fig.height=5}
+```{r, fig.width=6, fig.height=5}
 get_res_df <- function(tissue, agg_levels){
   resDir <- paste0(resDir, tissue, "/all/only_sra/")
   
@@ -166,7 +167,7 @@ ll_plot(cns_ll_df, colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "PuBu
 
 Compare the enrichment of known tissue-specific pathways in context-specific networks inferred only from GTEx vs all data
 
-```{r, fig.height=4, fig.width=5}
+```{r, fig.height=6, fig.width=5}
 blood_all <- readRDS(paste0(resDir, "blood/all/net_65/oddsRatio.rds"))
 blood_GTEx <- readRDS(paste0(resDir, "blood/GTEx/net_1/oddsRatio.rds"))
 cns_all <- readRDS(paste0(resDir, "central_nervous_system/all/net_53/oddsRatio.rds"))
