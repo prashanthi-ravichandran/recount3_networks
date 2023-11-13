@@ -1,0 +1,179 @@
+---
+title: "Properties of context-specific networks"
+output: html_document
+date: '2023-11-13'
+---
+
+```{r setup, include=FALSE}
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Properties of data aggregated to form context-specific networks
+
+This script reproduces Fig 5, and Supplementary figure 13. 
+
+```{r}
+library(ggplot2)
+library(cowplot)
+library(RColorBrewer)
+library(rstatix)
+library(igraph)
+library(stringr)
+library(ggpubr)
+library(pheatmap)
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+contexts <- c("adipose", "airway", "B_cells", "blood", "breast", "cardiac", 
+              "central_nervous_system", "colon", "esophagus", "eye", "fibroblasts", 
+              "hescs", "intestine", "ipscs", "kidney", "liver", "lung", 
+              "multipotent_cells", "myeloid_cells", "nervous_system", "pancreas", 
+              "pbmcs_t_cells", "prostate", "skeletal_muscle", "skin", "stomach", "vascular")
+nAll_studies <- c()
+nAll_samples <- c()
+nAll_median_sample_size <- c()
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+datDir <- paste0(homeDir, "data/")
+for(i in c(1:length(contexts))){
+  study_metaData <- readRDS(paste0(datDir, contexts[i], "/all/study_metaData.rds"))
+  nAll_studies[i] <- dim(study_metaData)[1]
+  nAll_samples[i] <- sum(study_metaData$n)
+  nAll_median_sample_size[i] <- median(study_metaData$n)
+}
+nGTEx_studies <- c()
+nGTEx_samples <- c()
+nGTEx_median_sample_size <- c()
+for(i in c(1:length(contexts))){
+  if(contexts[i] %in% c("airway", "eye", "hescs", "ipscs", "multipotent_cells", "myeloid_cells", "pbmcs_t_cells")){
+    nGTEx_studies[i] <- 0
+    nGTEx_samples[i] <- 0
+    nGTEx_median_sample_size[i] <- 0
+  }
+  else{
+    study_metaData <- readRDS(paste0(datDir, contexts[i], "/GTEx/study_metaData.rds"))
+    nGTEx_studies[i] <- dim(study_metaData)[1]
+    nGTEx_samples[i] <- sum(study_metaData$n)
+    nGTEx_median_sample_size[i] <- median(study_metaData$n)}
+}
+
+all_tissue_df <- data.frame(contexts = contexts,
+                            nStudies = nAll_studies, 
+                            nSamples = nAll_samples, 
+                            nMedian_ss = nAll_median_sample_size)
+all_tissue_df$Samples_agg <- "Tissue consensus"
+
+GTEx_tissue_df <- data.frame(contexts = contexts, 
+                             nStudies = nGTEx_studies, 
+                             nSamples = nGTEx_samples, 
+                             nMedian_ss = nGTEx_median_sample_size)
+GTEx_tissue_df$Samples_agg <- "GTEx"
+
+tissue_df <- rbind(all_tissue_df, GTEx_tissue_df)
+tissue_df$contexts <- gsub("_", " ", tissue_df$contexts)
+tissue_df$contexts <- str_to_sentence(tissue_df$contexts)
+tissue_df$contexts[tissue_df$contexts == "Hescs"] <- "hESCs"
+tissue_df$contexts[tissue_df$contexts == "Ipscs"] <- "iPSCs"
+tissue_df$contexts[tissue_df$contexts == "Pbmcs t cells"] <- "PBMCs/T cells"
+
+```
+
+
+```{r, fig.height=8, fig.width=8}
+p1 <- ggplot(tissue_df, aes(x = reorder(contexts, nSamples), y = nStudies, fill = Samples_agg)) + 
+  geom_bar(stat = "identity", position = "dodge") + coord_flip() + theme_classic() + xlab("") +
+  ylab("Number of studies") + guides(fill=guide_legend(title="Samples\naggregated")) + scale_fill_brewer(palette = "Set1") +
+  ggtitle("Number of studies aggregated in each tissue context") +
+  theme(legend.title=element_blank(), legend.position = "bottom", plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+p1
+```
+
+```{r, fig.height=8, fig.width=8}
+p2 <- ggplot(tissue_df, aes(x = reorder(contexts, nSamples), y = nSamples, fill = Samples_agg)) + 
+  geom_bar(stat = "identity", position = "dodge") + coord_flip() + theme_classic() + xlab("") +
+  ylab("Number of samples") + guides(fill=guide_legend(title="Samples\naggregated")) + scale_fill_brewer(palette = "Set1")+
+  ggtitle("Number of samples aggregated in each tissue context") +
+  theme(legend.title=element_blank(), legend.position = "bottom", plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+p2
+```
+
+```{r, fig.height=8, fig.width=8}
+p3 <- ggplot(tissue_df, aes(x = reorder(contexts, nSamples), y = nMedian_ss, fill = Samples_agg)) + 
+  geom_bar(stat = "identity", position = "dodge") + coord_flip() + theme_classic() + xlab("") +
+  ylab("Median sample size") + guides(fill=guide_legend(title="Samples\naggregated")) + scale_fill_brewer(palette = "Set1") +
+  ggtitle("Median sample size of studies aggregated in each tissue context")+
+  theme(legend.title=element_blank(), legend.position = "bottom", plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+p3
+```
+
+## Visualize enrichment of tissue-specific and general transcription factors among central network nodes
+
+```{r, fig.height=7, fig.width=8}
+resDir <- paste0(homeDir, "results/weighted_cov_networks/")
+TFs_res <- readRDS(paste0(resDir, "TF_enrichment.rds"))
+stat.test <- TFs_res %>%
+   group_by(Tissue) %>%
+   wilcox_test(Degree ~ Category, ref.group = "Tissue specific TFs")
+ stat.test <- stat.test %>%
+   add_xy_position(x = "Tissue", dodge = 0.8)
+ stat.test$p.adj.signif[stat.test$p.adj.signif == "****"] <- "p < 1e-4"
+ stat.test$p.adj.signif[stat.test$p.adj.signif == "***"] <- "p < 0.001"
+ stat.test$p.adj.signif[stat.test$p.adj.signif == "**"] <- "p < 0.01"
+ stat.test$p.adj.signif[stat.test$p.adj.signif == "*"] <- "p < 0.1"
+ 
+ggplot(TFs_res, aes(x = Tissue, y = Degree)) + 
+   geom_boxplot(aes(fill = Category), outlier.colour = "darkgrey", outlier.size =  0.5) + theme_classic() +
+   ggtitle("Tissue-specific network\nnode degree distributions") + coord_flip() +
+   stat_pvalue_manual( stat.test, label = "p.adj.signif", tip.length = 0.01,
+                       bracket.nudge.y = -2, hide.ns = TRUE, size = 5) + 
+   xlab("") + theme(legend.title=element_blank(), legend.position = "bottom", plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+         legend.text = element_text(size = 12, face = "bold"), 
+         axis.title = element_text(size = 12, face = "bold"))
+
+
+```
+
+## Matrix factorization based on shared hub genes
+
+```{r, fig.height=6, fig.width=6}
+model_hubs <- readRDS(paste0(homeDir, "results/matrix_factorization/model_hubs.rds"))
+model_edges <- readRDS(paste0(homeDir, "results/matrix_factorization/model_edges.rds"))
+
+pheatmap(t(model_hubs$h), color = colorRampPalette(brewer.pal(n = 9, name ="Blues"))(100),
+         main = "NMF of Hubs\npresent in at least 2 contexts")
+
+```
+```{r, fig.height=6, fig.width=6}
+pheatmap(t(model_edges$h), color = colorRampPalette(brewer.pal(n = 9, name ="Greens"))(100),
+         main = "NMF of Edges\npresent in at least 2 contexts")
+
+```
+
+```{r}
+sessionInfo()
+```
+
