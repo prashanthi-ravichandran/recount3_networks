@@ -1,0 +1,387 @@
+---
+title: "Visualize heritability enrichment in consensus networks"
+output: html_document
+date: '2023-11-13'
+---
+
+```{r setup, include=FALSE}
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+
+library(ggpubr)
+library(rmeta)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(rstatix)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+```
+
+## 42 Independent traits 
+
+```{r, fig.height=4, fig.width=10}
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+resDir <- paste0(homeDir, "results/s_LDSC/")
+all_consensus_res <- readRDS(paste0(resDir, "all_consensus_independent_sumstats.rds"))
+normal_consensus_res <- readRDS(paste0(resDir, "normal_consensus_independent_sumstats.rds"))
+
+normal_consensus_res_1 <- normal_consensus_res[normal_consensus_res$Control == "All genes", ]
+normal_consensus_res_2 <- normal_consensus_res[normal_consensus_res$Control == "All genes + Baseline", ]
+
+p1 <- ggplot() +
+  geom_bar(data = normal_consensus_res_1, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = normal_consensus_res_2, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = normal_consensus_res_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = normal_consensus_res_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") 
+
+
+p2 <- ggplot() +
+  geom_bar(data = normal_consensus_res_1, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = normal_consensus_res_2, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = normal_consensus_res_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = normal_consensus_res_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.4, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_normal <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 42 Independent Traits (Non-cancerous consensus)",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+legend_normal <- get_legend(p1)
+p1 <- p1 + theme(legend.position = "none")
+p2 <- p2 + theme(legend.position = "none")
+plot_grid(title_normal, plot_grid(p1, p2, nrow = 1, rel_widths = c(1, 1)), legend_normal, nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+```
+
+```{r, fig.width=10, fig.height=4}
+all_consensus_res_1 <- all_consensus_res[all_consensus_res$Control == "All genes", ]
+all_consensus_res_2 <- all_consensus_res[all_consensus_res$Control == "All genes + Baseline", ]
+
+p3 <- ggplot() +
+  geom_bar(data = all_consensus_res_1, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = all_consensus_res_2, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = all_consensus_res_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = all_consensus_res_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p4 <- ggplot() +
+  geom_bar(data = all_consensus_res_1, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = all_consensus_res_2, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = all_consensus_res_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = all_consensus_res_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.4, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_all <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 42 Independent Traits (Universal consensus)",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+legend_all <- get_legend(p3)
+p3 <- p3 + theme(legend.position = "none")
+p4 <- p4 + theme(legend.position = "none")
+plot_grid(title_all, plot_grid(p3, p4, nrow = 1, rel_widths = c(1, 1, 0.2)), legend_all,  nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+
+
+```
+
+```{r, fig.width=10, fig.height=4}
+consensus_res <- readRDS(paste0(resDir, "consensus_independent_sumstats.rds"))
+consensus_res_1 <- consensus_res[consensus_res$Control == "All genes", ]
+consensus_res_2 <- consensus_res[consensus_res$Control == "All genes + Baseline", ]
+
+consensus_res_mean_1 <- consensus_res_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), mean)
+consensus_res_sd_1 <- consensus_res_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), sd)
+consensus_res_mean_1$Enrichment_sd <- consensus_res_sd_1$Enrichment
+consensus_res_mean_1$Coefficient_sd <- consensus_res_sd_1$Coefficient
+
+consensus_res_mean_2 <- consensus_res_2 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), mean)
+consensus_res_sd_2 <- consensus_res_2 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), sd)
+consensus_res_mean_2$Enrichment_sd <- consensus_res_sd_2$Enrichment
+consensus_res_mean_2$Coefficient_sd <- consensus_res_sd_2$Coefficient
+
+
+p5 <- ggplot() +
+  geom_bar(data = consensus_res_mean_1, mapping = aes(x = Centrality, y = Enrichment, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = consensus_res_mean_2, mapping = aes(x = Centrality, y = Enrichment, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(name = "Network", palette = "Set2") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.6) +
+  geom_errorbar(data = consensus_res_mean_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_sd, ymax = Enrichment + Enrichment_sd, fill = net), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = consensus_res_mean_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_sd, ymax = Enrichment + Enrichment_sd, fill = net), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p6 <- ggplot() +
+  geom_bar(data = consensus_res_mean_1, mapping = aes(x = Centrality, y = Coefficient, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = consensus_res_mean_2, mapping = aes(x = Centrality, y = Coefficient, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(name = "Network", palette = "Set2") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.6) +
+  geom_errorbar(data = consensus_res_mean_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_sd, ymax = Coefficient + Coefficient_sd, fill = net), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = consensus_res_mean_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_sd, ymax = Coefficient + Coefficient_sd, fill = net), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_consensus <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 42 Independent Traits",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+
+legend_consensus <- get_legend(p5)
+p5 <- p5 + theme(legend.position = "none")
+p6 <- p6 + theme(legend.position = "none")
+plot_grid(title_consensus, plot_grid(p5, p6, nrow = 1, rel_widths = c(1, 1, 0.2)), legend_consensus,  nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+
+```
+
+## UKBB traits
+
+```{r, fig.height=4, fig.width=10}
+all_consensus_UKBB <- readRDS(paste0(resDir, "all_consensus_UKBB.rds"))
+normal_consensus_UKBB <- readRDS(paste0(resDir, "normal_consensus_UKBB.rds"))
+
+normal_consensus_UKBB_1 <- normal_consensus_UKBB[normal_consensus_UKBB$Control == "All genes", ]
+normal_consensus_UKBB_2 <- normal_consensus_UKBB[normal_consensus_UKBB$Control == "All genes + Baseline", ]
+
+p1 <- ggplot() +
+  geom_bar(data = normal_consensus_UKBB_1, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = normal_consensus_UKBB_2, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = normal_consensus_UKBB_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = normal_consensus_UKBB_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") 
+
+
+p2 <- ggplot() +
+  geom_bar(data = normal_consensus_UKBB_1, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = normal_consensus_UKBB_2, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = normal_consensus_UKBB_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = normal_consensus_UKBB_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.4, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_normal <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 219 UKBB Traits (Non-cancerous consensus)",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+legend_normal <- get_legend(p1)
+p1 <- p1 + theme(legend.position = "none")
+p2 <- p2 + theme(legend.position = "none")
+plot_grid(title_normal, plot_grid(p1, p2, nrow = 1, rel_widths = c(1, 1)), legend_normal, nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+```
+
+```{r, fig.width=10, fig.height=4}
+all_consensus_UKBB_1 <- all_consensus_UKBB[all_consensus_UKBB$Control == "All genes", ]
+all_consensus_UKBB_2 <- all_consensus_UKBB[all_consensus_UKBB$Control == "All genes + Baseline", ]
+
+p3 <- ggplot() +
+  geom_bar(data = all_consensus_UKBB_1, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = all_consensus_UKBB_2, mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = all_consensus_UKBB_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = all_consensus_UKBB_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+
+p4 <- ggplot() +
+  geom_bar(data = all_consensus_UKBB_1, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = all_consensus_UKBB_2, mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.4) +
+  geom_errorbar(data = all_consensus_UKBB_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = all_consensus_UKBB_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.4, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_all <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 219 UKBB Traits (Universal consensus)",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+legend_all <- get_legend(p3)
+p3 <- p3 + theme(legend.position = "none")
+p4 <- p4 + theme(legend.position = "none")
+plot_grid(title_all, plot_grid(p3, p4, nrow = 1, rel_widths = c(1, 1, 0.2)), legend_all,  nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+
+
+```
+
+```{r, fig.width=10, fig.height=4}
+consensus_UKBB <- readRDS(paste0(resDir, "consensus_UKBB.rds"))
+consensus_UKBB_1 <- consensus_UKBB[consensus_UKBB$Control == "All genes", ]
+consensus_UKBB_2 <- consensus_UKBB[consensus_UKBB$Control == "All genes + Baseline", ]
+
+consensus_UKBB_mean_1 <- consensus_UKBB_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), mean)
+consensus_UKBB_sd_1 <- consensus_UKBB_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), sd)
+consensus_UKBB_mean_1$Enrichment_sd <- consensus_UKBB_sd_1$Enrichment
+consensus_UKBB_mean_1$Coefficient_sd <- consensus_UKBB_sd_1$Coefficient
+
+consensus_UKBB_mean_2 <- consensus_UKBB_2 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), mean)
+consensus_UKBB_sd_2 <- consensus_UKBB_2 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), sd)
+consensus_UKBB_mean_2$Enrichment_sd <- consensus_UKBB_sd_2$Enrichment
+consensus_UKBB_mean_2$Coefficient_sd <- consensus_UKBB_sd_2$Coefficient
+
+
+p5 <- ggplot() +
+  geom_bar(data = consensus_UKBB_mean_1, mapping = aes(x = Centrality, y = Enrichment, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = consensus_UKBB_mean_2, mapping = aes(x = Centrality, y = Enrichment, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(name = "Network", palette = "Set2") + theme_classic2() + xlab("") + ylab("Enrichment") +
+  geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.6) +
+  geom_errorbar(data = consensus_UKBB_mean_1, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_sd, ymax = Enrichment + Enrichment_sd, fill = net), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = consensus_UKBB_mean_2, mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_sd, ymax = Enrichment + Enrichment_sd, fill = net), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+p6 <- ggplot() +
+  geom_bar(data = consensus_UKBB_mean_1, mapping = aes(x = Centrality, y = Coefficient, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = consensus_UKBB_mean_2, mapping = aes(x = Centrality, y = Coefficient, fill = net, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  scale_fill_brewer(name = "Network", palette = "Set2") + theme_classic2() + xlab("") + ylab("Coefficient") +
+  geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.6) +
+  geom_errorbar(data = consensus_UKBB_mean_1, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_sd, ymax = Coefficient + Coefficient_sd, fill = net), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = consensus_UKBB_mean_2, mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_sd, ymax = Coefficient + Coefficient_sd, fill = net), width = 0.2, position=position_dodge(0.9)) + 
+  scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+
+title_consensus <- ggdraw() + 
+    draw_label(
+      "Meta-Analysis of 219 UKBB Traits",
+      fontface = 'bold',
+      x = 0,
+      size = 16,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+
+legend_consensus <- get_legend(p5)
+p5 <- p5 + theme(legend.position = "none")
+p6 <- p6 + theme(legend.position = "none")
+plot_grid(title_consensus, plot_grid(p5, p6, nrow = 1, rel_widths = c(1, 1, 0.2)), legend_consensus,  nrow = 3, rel_heights =  c(0.1, 1, 0.1))
+
+```
+
+
+```{r}
+sessionInfo()
+```
+
