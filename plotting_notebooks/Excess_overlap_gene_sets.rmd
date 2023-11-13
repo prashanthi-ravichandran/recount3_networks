@@ -1,0 +1,302 @@
+---
+title: Visualize excess overlap of evolutionarily constrained and functional gene
+  sets
+output: html_document
+date: '2023-11-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+.libPaths(c("/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-markdown-1.1-g65guwxov2k2maedod2wedfr5jon6egu/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-knitr-1.28-cn7dhiz6mwl53op4gpecto35sljr4muz/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-yaml-2.2.0-ttbd4ipwa5jccbl733saf7c2zijmdixr/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringr-1.4.0-qbr2amu2xnxkicncfgvu7klzll4dg46v/rlib/R/library",
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-stringi-1.4.3-n22ruwgbot2i3becz3comesic75s47r6/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-magrittr-1.5-wy6q2ditqph62m4dib33mds3wsbluj7g/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-glue-1.4.1-5ejojwbzonzsvkmwa7o2h57gpbsutbl4/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-mime-0.7-n4hlpgd2g5fdbt3idl374eftb2utep3r/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-highr-0.8-rcw4hovy72yo4wj6mfrgtgbkovlqb3fg/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-evaluate-0.14-laasv6wsxntd3ht34ydl4ott7zzfthko/rlib/R/library", 
+            "/data/apps/linux-centos8-cascadelake/gcc-9.3.0/r-4.0.2-amdvcpog4ugspqwwx3ari7pzkmckelu6/rlib/R/library", 
+            "/home/pravich2/rlibs/4.0.2/gcc/9.3.0"))
+library(ggplot2)
+library(RColorBrewer)
+library(grid)
+library(gridExtra)
+library(dplyr)
+library(cowplot)
+library(stringr)
+```
+
+This document can be used to visualize the excess overlap of functional and evolutionarily constrained gene sets in consensus and context-specific networks
+
+## Read and format data
+
+```{r}
+homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
+resDir <- paste0(homeDir, "results/weighted_cov_networks/")
+cancer_consensus_res <- readRDS(paste0(resDir, "cancer_consensus/net_386/node_closeness_enrichment.rds"))
+normal_consensus_res <- readRDS(paste0(resDir, "normal_consensus/net_629/node_closeness_enrichment.rds"))
+all_consensus_res <- readRDS(paste0(resDir,"all_consensus/net_966/node_closeness_enrichment.rds"))
+blood_consensus_res <- readRDS(paste0(resDir, "blood/all/net_65/node_closeness_enrichment.rds"))
+cns_consensus_res <- readRDS(paste0(resDir, "central_nervous_system/all/net_53/node_closeness_enrichment.rds"))
+liver_consensus_res <- readRDS(paste0(resDir, "liver/all/net_28/node_closeness_enrichment.rds"))
+lung_consensus_res <- readRDS(paste0(resDir, "lung/all/net_10/node_closeness_enrichment.rds"))
+adipose_consensus_res <- readRDS(paste0(resDir, "adipose/all/net_11/node_closeness_enrichment.rds"))
+skin_consensus_res <- readRDS(paste0(resDir, "skin/all/net_20/node_closeness_enrichment.rds"))
+```
+
+```{r}
+cancer_consensus_res[[1]]$Lambda <- 0.20
+cancer_consensus_res[[2]]$Lambda <- 0.22
+cancer_consensus_res[[3]]$Lambda <- 0.24
+cancer_consensus_res[[4]]$Lambda <- 0.26
+ 
+normal_consensus_res[[1]]$Lambda <- 0.14
+normal_consensus_res[[2]]$Lambda <- 0.16
+normal_consensus_res[[3]]$Lambda <- 0.18
+normal_consensus_res[[4]]$Lambda <- 0.20
+ 
+all_consensus_res[[1]]$Lambda <- 0.14
+all_consensus_res[[2]]$Lambda <- 0.16
+all_consensus_res[[3]]$Lambda <- 0.18
+all_consensus_res[[4]]$Lambda <- 0.20
+ 
+blood_consensus_res[[1]]$Lambda <- 0.18
+blood_consensus_res[[2]]$Lambda <- 0.20
+blood_consensus_res[[3]]$Lambda <- 0.22
+blood_consensus_res[[4]]$Lambda <- 0.24
+blood_consensus_res[[5]]$Lambda <- 0.26
+ 
+cns_consensus_res[[1]]$Lambda <- 0.24
+cns_consensus_res[[2]]$Lambda <- 0.26
+cns_consensus_res[[3]]$Lambda <- 0.28
+cns_consensus_res[[4]]$Lambda <- 0.30
+cns_consensus_res[[5]]$Lambda <- 0.32
+
+adipose_consensus_res[[1]]$Lambda <- 0.20
+adipose_consensus_res[[2]]$Lambda <- 0.22
+adipose_consensus_res[[3]]$Lambda <- 0.24
+adipose_consensus_res[[4]]$Lambda <- 0.26
+adipose_consensus_res[[5]]$Lambda <- 0.28
+
+liver_consensus_res[[1]]$Lambda <- 0.20
+liver_consensus_res[[2]]$Lambda <- 0.22
+liver_consensus_res[[3]]$Lambda <- 0.24
+liver_consensus_res[[4]]$Lambda <- 0.26
+liver_consensus_res[[5]]$Lambda <- 0.28
+
+lung_consensus_res[[1]]$Lambda <- 0.24
+lung_consensus_res[[2]]$Lambda <- 0.26
+lung_consensus_res[[3]]$Lambda <- 0.28
+lung_consensus_res[[4]]$Lambda <- 0.30
+lung_consensus_res[[5]]$Lambda <- 0.32
+
+skin_consensus_res[[1]]$Lambda <- 0.22
+skin_consensus_res[[2]]$Lambda <- 0.24
+skin_consensus_res[[3]]$Lambda <- 0.26
+skin_consensus_res[[4]]$Lambda <- 0.28
+
+```
+
+```{r}
+cancer_consensus_res <- do.call(rbind, cancer_consensus_res)
+normal_consensus_res <- do.call(rbind, normal_consensus_res)
+all_consensus_res <- do.call(rbind, all_consensus_res)
+blood_consensus_res <- do.call(rbind, blood_consensus_res)
+cns_consensus_res <- do.call(rbind, cns_consensus_res)
+adipose_consensus_res <- do.call(rbind, adipose_consensus_res)
+liver_consensus_res <- do.call(rbind, liver_consensus_res)
+lung_consensus_res <- do.call(rbind, lung_consensus_res)
+skin_consensus_res <- do.call(rbind, skin_consensus_res)
+
+
+cancer_consensus_res$Samples_agg <- "Cancerous consensus"
+normal_consensus_res$Samples_agg <- "Non-cancerous consensus"
+all_consensus_res$Samples_agg <- "Universal consensus"
+blood_consensus_res$Samples_agg <- "Blood"
+cns_consensus_res$Samples_agg <- "CNS"
+adipose_consensus_res$Samples_agg <- "Adipose"
+liver_consensus_res$Samples_agg <- "Liver"
+lung_consensus_res$Samples_agg <- "Lung"
+skin_consensus_res$Samples_agg <- "Skin"
+
+consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res) 
+context_res <- rbind(blood_consensus_res, cns_consensus_res, adipose_consensus_res, liver_consensus_res, lung_consensus_res, skin_consensus_res)
+
+consensus_res$Samples_agg <- factor(consensus_res$Samples_agg, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+
+context_res$Samples_agg <- factor(context_res$Samples_agg, levels = c("Blood", "CNS", "Adipose", "Liver", "Lung", "Skin"))
+
+cancer_consensus_summ <- cancer_consensus_res %>%
+group_by(Decile, Gene_set) %>%
+  summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+ 
+normal_consensus_summ <- normal_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+ 
+all_consensus_summ <- all_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+ 
+cns_consensus_summ <- cns_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+ 
+blood_consensus_summ <- blood_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+
+adipose_consensus_summ <- adipose_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+
+liver_consensus_summ <- liver_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+
+lung_consensus_summ <- lung_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+ 
+skin_consensus_summ <- skin_consensus_res %>%
+   group_by(Decile, Gene_set) %>%
+   summarise(Enrichment_mean = (mean(Enrichment)),
+             Enrichment_sd = (sd(Enrichment)))
+
+cancer_consensus_summ$Samples_agg <- "Cancerous consensus"
+normal_consensus_summ$Samples_agg <- "Non-cancerous consensus"
+all_consensus_summ$Samples_agg <- "Universal consensus"
+blood_consensus_summ$Samples_agg <- "Blood"
+cns_consensus_summ$Samples_agg <- "CNS"
+adipose_consensus_summ$Samples_agg <- "Adipose"
+liver_consensus_summ$Samples_agg <- "Liver"
+lung_consensus_summ$Samples_agg <- "Lung"
+skin_consensus_summ$Samples_agg <- "Skin"
+
+```
+
+## Consensus networks 
+
+```{r, fig.width=8, fig.height=6}
+consensus_summ <- rbind(all_consensus_summ, normal_consensus_summ, cancer_consensus_summ)
+context_summ <- rbind(blood_consensus_summ, cns_consensus_summ, 
+                      adipose_consensus_summ, liver_consensus_summ, 
+                      lung_consensus_summ, skin_consensus_summ)
+consensus_summ$Samples_agg <- factor(consensus_summ$Samples_agg, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+context_summ$Samples_agg <- factor(context_summ$Samples_agg, levels = c("Blood", "CNS", "Adipose", "Liver", "Lung", "Skin"))
+
+plot_geneSet <- function(gs, df){
+   df <- df[df$Gene_set == gs, ]
+   df$Decile <- factor(df$Decile, levels = c("1", "2", "3", "4", "5"))
+   p <- ggplot(df, aes(x = Decile, y = Enrichment, fill = Samples_agg)) + geom_boxplot() + theme_classic() + geom_hline(yintercept = 1, linewidth = 0.4, linetype = 2) +
+        ggtitle(gs) + xlab("Quintile") + ylab("Excess overlap") + scale_fill_brewer(name = "Samples aggregated",palette="Dark2") +
+     theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"),
+           legend.text = element_text(size = 14, face = "bold"),
+           axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
+     guides(fill=guide_legend("", nrow=2, byrow=TRUE)) 
+    p
+ }
+
+MGI_essential <- plot_geneSet("MGI essential", consensus_res)
+pLI_essential <- plot_geneSet("High PLI", consensus_res)
+haploinsufficient_essential <- plot_geneSet("Haploinsufficient", consensus_res)
+missenseZ_essential <- plot_geneSet("High missense z-score", consensus_res)
+Phi_essential <- plot_geneSet("High Phi", consensus_res)
+Shet_essential <- plot_geneSet("High Shet", consensus_res)
+autosomal_dominant <- plot_geneSet("Autosomal dominant", consensus_res)
+ 
+eQTL0 <- plot_geneSet("eQTL0 deficient", consensus_res)
+OMIM <- plot_geneSet("OMIM", consensus_res)
+ClinVar <- plot_geneSet("ClinVar", consensus_res)
+GWAS_nearest  <- plot_geneSet("GWAS nearest", consensus_res)
+drug_bank <- plot_geneSet("Drug bank", consensus_res)
+ 
+get_legend<-function(myggplot){
+   tmp <- ggplot_gtable(ggplot_build(myggplot))
+   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+   legend <- tmp$grobs[[leg]]
+   return(legend)
+ }
+ 
+legend_samples <- get_legend(eQTL0)
+pLI_essential <- pLI_essential + theme(legend.position = "none")
+MGI_essential <- MGI_essential + theme(legend.position = "none")
+Shet_essential <- Shet_essential + theme(legend.position = "none")
+missenseZ_essential <- missenseZ_essential + theme(legend.position = "none")
+Phi_essential <- Phi_essential + theme(legend.position = "none")
+ 
+eQTL0 <- eQTL0 + theme(legend.position = "none")
+OMIM <- OMIM + theme(legend.position = "none")
+ClinVar <- ClinVar + theme(legend.position = "none")
+drug_bank <- drug_bank + theme(legend.position = "none")
+GWAS_nearest <- GWAS_nearest  + theme(legend.position = "none")
+ 
+plot_grid(plot_grid(pLI_essential, Shet_essential, missenseZ_essential, Phi_essential, nrow = 2), legend_samples,
+           nrow = 2, rel_heights = c(1, 0.1))
+ 
+eQTL0 <- eQTL0 + ggtitle("eQTL deficient")
+plot_grid(plot_grid(eQTL0, OMIM, ClinVar, drug_bank, nrow = 2), legend_samples,
+           nrow = 2, rel_heights = c(1, 0.1))
+```
+
+## Context-specific networks
+
+```{r, fig.width=10, fig.height=6}
+MGI_essential_context <- plot_geneSet("MGI essential", context_res)
+pLI_essential_context <- plot_geneSet("High PLI", context_res)
+haploinsufficient_essential_context <- plot_geneSet("Haploinsufficient", context_res)
+missenseZ_essential_context <- plot_geneSet("High missense z-score", context_res)
+Phi_essential_context <- plot_geneSet("High Phi", context_res)
+Shet_essential_context <- plot_geneSet("High Shet", context_res)
+autosomal_dominant_context <- plot_geneSet("Autosomal dominant", context_res)
+ 
+eQTL0_context <- plot_geneSet("eQTL0 deficient", context_res)
+OMIM_context <- plot_geneSet("OMIM", context_res)
+ClinVar_context <- plot_geneSet("ClinVar", context_res)
+GWAS_nearest_context  <- plot_geneSet("GWAS nearest", context_res)
+drug_bank_context <- plot_geneSet("Drug bank", context_res)
+ 
+get_legend<-function(myggplot){
+   tmp <- ggplot_gtable(ggplot_build(myggplot))
+   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+   legend <- tmp$grobs[[leg]]
+   return(legend)
+ }
+ 
+legend_samples_context <- get_legend(eQTL0_context)
+pLI_essential_context <- pLI_essential_context + theme(legend.position = "none")
+MGI_essential_context <- MGI_essential_context + theme(legend.position = "none")
+Shet_essential_context <- Shet_essential_context + theme(legend.position = "none")
+missenseZ_essential_context <- missenseZ_essential_context + theme(legend.position = "none")
+Phi_essential_context <- Phi_essential_context + theme(legend.position = "none")
+ 
+eQTL0_context <- eQTL0_context + theme(legend.position = "none")
+OMIM_context <- OMIM_context + theme(legend.position = "none")
+ClinVar_context <- ClinVar_context + theme(legend.position = "none")
+drug_bank_context <- drug_bank_context + theme(legend.position = "none")
+GWAS_nearest_context <- GWAS_nearest_context  + theme(legend.position = "none")
+ 
+plot_grid(plot_grid(pLI_essential_context, Shet_essential_context, missenseZ_essential_context, Phi_essential_context, nrow = 2), legend_samples_context,
+           nrow = 2, rel_heights = c(1, 0.1))
+ 
+eQTL0_context <- eQTL0_context + ggtitle("eQTL deficient")
+plot_grid(plot_grid(eQTL0_context, OMIM_context, ClinVar_context, drug_bank_context, nrow = 2), legend_samples_context,
+           nrow = 2, rel_heights = c(1, 0.1))
+
+```
+
+```{r}
+sessionInfo()
+```
+
