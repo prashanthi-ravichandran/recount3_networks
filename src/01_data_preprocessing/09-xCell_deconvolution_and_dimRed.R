@@ -164,7 +164,7 @@ p1
 
 blood_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Blood", ]
 immune_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Immune system" , ]
-CNS_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tssue == "Central nervous system" , ]
+CNS_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Central nervous system" , ]
 skin_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Skin" , ]
 musculoskeletal_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Muscoloskeletal" , ]
 adipose_xcell_tsne <- normal_xcell_tsne_df[normal_xcell_tsne_df$Tissue == "Adipose" , ]
