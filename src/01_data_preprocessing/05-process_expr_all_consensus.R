@@ -30,6 +30,7 @@ gtex_list <- lapply(gtex.projects, function(iproj){
   readRDS(paste0(rpkmDir, studies[1], "/", iproj))
 })
 
+
 names(gtex_list) <- gsub(".rds", "", gtex.projects)
 gtex_list[["STUDY_NA"]] <- NULL
 
@@ -46,7 +47,7 @@ lapply(gtex_list, function(rse){
 })
 
 # For SRA we need to apply microRNA and other filters to the data with replicates merged
-replicatesMerged <- "/work-zfs/abattle4/prashanthi/recount3/data/replicates_merged/gene_filters/"
+replicatesMerged <- "/data/abattle4/prashanthi/recount3/data/replicates_merged/gene_filters/"
 sra.projects <- list.files(replicatesMerged)
 sra_list <- lapply(sra.projects, function(iproj){
   cat(iproj, sep="\n")
@@ -92,6 +93,7 @@ sra_list[["SRP096986"]] <- NULL # This is a single cell study
 sra_list[["SRP135684"]] <- NULL # this is a single cell study
 sra_list[["SRP166966"]] <- NULL # this is a single cell study
 sra_list[["SRP200058"]] <- NULL # this is a single cell study
+sra_list[["SRP063998"]] <- NULL # this is a single cell study
 
 tissue_df_annotations <- readRDS("/data/abattle4/prashanthi/recount3/data/tissue_df.rds")
 sra_list <- lapply(sra_list, function(iexpr){

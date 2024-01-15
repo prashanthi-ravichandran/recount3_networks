@@ -70,10 +70,9 @@ p1 <- ggplot(consensus_res, aes(x = degree, y = `GO:0000278`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
-        legend.text = element_text(size = 14, face = "bold"),
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") +
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 p2 <- ggplot(consensus_res, aes(x = degree, y = `GO:0051276`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
@@ -82,10 +81,9 @@ p2 <- ggplot(consensus_res, aes(x = degree, y = `GO:0051276`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20))+ 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"),
-        legend.text = element_text(size = 14, face = "bold"), 
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 p3 <- ggplot(consensus_res, aes(x = degree, y = `GO:0033043`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
@@ -94,10 +92,9 @@ p3 <- ggplot(consensus_res, aes(x = degree, y = `GO:0033043`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
-        legend.text = element_text(size = 14, face = "bold"), 
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 p4 <- ggplot(consensus_res, aes(x = degree, y = `GO:0007017`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
@@ -106,10 +103,9 @@ p4 <- ggplot(consensus_res, aes(x = degree, y = `GO:0007017`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
-        legend.text = element_text(size = 14, face = "bold"), 
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 p5 <- ggplot(consensus_res, aes(x = degree, y = `GO:0061640`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
@@ -118,10 +114,9 @@ p5 <- ggplot(consensus_res, aes(x = degree, y = `GO:0061640`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text = element_text(size = 12, face = "bold"), 
-        legend.text = element_text(size = 14, face = "bold"),
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 p6 <- ggplot(consensus_res, aes(x = degree, y = `GO:0006974`, colour = `Samples aggregated`, shape = `Samples aggregated`)) + geom_point(size = 2) + geom_line() +
@@ -130,10 +125,9 @@ p6 <- ggplot(consensus_res, aes(x = degree, y = `GO:0006974`, colour = `Samples 
   scale_shape_manual(values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16, 
                                 "Cancerous consensus" = 17, "CNS" = 18, "Blood" = 20)) + 
   geom_hline(yintercept = 1, color="black", linetype="dashed") +
-  theme(plot.title = element_text(face="bold", size = 14), axis.text.x = element_blank(), 
-        legend.text = element_text(size = 14, face = "bold"),
-        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-  guides(shape=guide_legend(""), colour=guide_legend(""))
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 
 get_legend<-function(myggplot){

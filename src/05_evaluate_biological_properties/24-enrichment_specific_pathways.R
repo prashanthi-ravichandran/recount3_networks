@@ -13,7 +13,7 @@ library(ggplot2)
 library(RColorBrewer)
 library(GOfuncR)
 
-home.dir <- "/data/abattle4/prashanthi/recount3_paper/"
+home.dir <- "/data/abattle4/prashanthi/recount3/"
 dat.dir <- paste0(home.dir, "data/")
 res.dir <- paste0(home.dir, "results/weighted_cov_networks/")
 plot.dir <- paste0(home.dir, "plots/")
@@ -78,7 +78,7 @@ neural_pathways <- c("GO:0099175", "GO:0007411", "GO:0007417",
                      "GO:0001963", "GO:0035249","GO:0051932")
 # Blood specific pathways
 blood_pathways <- c("GO:0002521", "GO:0030595", "GO:0007596", 
-                    "GO:0030168", "GO:0042386", "GO:0043249", 
+                    "GO:0030168", 
                     "GO:0034101", "GO:0048821",
                     "GO:0050900", "GO:0045321", "GO:0030595", "GO:0045087")
 # Skin specific pathways
@@ -116,7 +116,7 @@ blood_consensus_res <- lapply(consensus_pathways, function(GO_term){
 
 
 all_consensus_neural <- lapply(neural_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_neural <- lapply(neural_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)
@@ -133,7 +133,7 @@ blood_consensus_neural <- lapply(neural_pathways, function(GO_term){
 
 
 all_consensus_blood <- lapply(blood_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_blood <- lapply(blood_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)
@@ -149,13 +149,13 @@ cns_consensus_blood <- lapply(blood_pathways, function(GO_term){
 })
 
 all_consensus_skin <- lapply(skin_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_skin <- lapply(skin_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)
 })
 skin_GTEx_skin <- lapply(skin_pathways, function(GO_term){
-  net_odds_pathway("skin/GTEx", 0.26, 2, GO_term)
+  net_odds_pathway("skin/GTEx", 0.28, 2, GO_term)
 })
 skin_consensus_skin <- lapply(skin_pathways, function(GO_term){
   net_odds_pathway("skin/all", 0.26, 20, GO_term)
@@ -169,7 +169,7 @@ cns_consensus_skin <- lapply(skin_pathways, function(GO_term){
 
 
 all_consensus_adipose <- lapply(adipose_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_adipose <- lapply(adipose_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)
@@ -190,7 +190,7 @@ cns_consensus_adipose <- lapply(adipose_pathways, function(GO_term){
 
 
 all_consensus_lung <- lapply(lung_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_lung <- lapply(lung_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)
@@ -210,7 +210,7 @@ cns_consensus_lung <- lapply(lung_pathways, function(GO_term){
 
 
 all_consensus_liver <- lapply(liver_pathways, function(GO_term){
-  net_odds_pathway("all_consensus", 0.18, 967, GO_term)
+  net_odds_pathway("all_consensus", 0.18, 966, GO_term)
 })
 normal_consensus_liver <- lapply(liver_pathways, function(GO_term){
   net_odds_pathway("normal_consensus", 0.18, 629, GO_term)

@@ -18,7 +18,7 @@ covDir <- paste0(datDir, agg_level, "/single_covariances/")
 projects <- list.files(corrDir)
 expr_list <- lapply(projects, function(iproj){
     cat(iproj, sep = "\n")
-    readRDS(paste0(datDir, iproj))
+    readRDS(paste0(corrDir, iproj))
 })
   
 names(expr_list) <- gsub(".rds", "", projects)

@@ -54,12 +54,12 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-networks <- c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus")
+networks <- c("Universal consensus", "Non-cancer consensus", "Cancer consensus")
 nSamples <- c(sum(all_metadata$n), sum(normal_metadata$n), sum(cancer_metadata$n))
 nStudies <- c(dim(all_metadata)[1], dim(normal_metadata)[1], dim(cancer_metadata)[1])
 medianSampleSize <- c(median(all_metadata$n), median(normal_metadata$n), median(cancer_metadata$n))
 summary_df <- data.frame(networks, nSamples, nStudies, medianSampleSize)
-summary_df$networks <- factor(summary_df$networks, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+summary_df$networks <- factor(summary_df$networks, levels = c("Universal consensus", "Non-cancer consensus", "Cancer consensus"))
 
 p1 <- ggplot(summary_df, aes(x = networks, y = nSamples, fill = networks)) + geom_bar(stat = "identity") +
   theme_classic() + scale_fill_brewer(name = "", palette = "Dark2") + xlab("") + ylab("") + ggtitle("Number of samples") +
@@ -103,17 +103,17 @@ normal_consensus_res$F1score <- (2*normal_consensus_res$precision*normal_consens
 cancer_consensus_res$F1score <- (2*cancer_consensus_res$precision*cancer_consensus_res$recall)/(cancer_consensus_res$precision + cancer_consensus_res$recall)
 
 all_consensus_res$type <- "Universal consensus"
-normal_consensus_res$type <- "Non-cancerous consensus"
-cancer_consensus_res$type <- "Cancerous consensus"
+normal_consensus_res$type <- "Non-cancer consensus"
+cancer_consensus_res$type <- "Cancer consensus"
 consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res)
-consensus_res$type <- factor(consensus_res$type, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+consensus_res$type <- factor(consensus_res$type, levels = c("Universal consensus", "Non-cancer consensus", "Cancer consensus"))
 
 ggplot(dat = consensus_res[consensus_res$n.edges<=500000 & consensus_res$n.edges>=5000,], aes(x = log10(n.edges), y = F1score, col = type, shape = type))+
   geom_line() + geom_point(size = 2) + scale_colour_brewer(name = "", palette = "Dark2") + ggtitle("F1-score of consensus networks") +
-  scale_shape_manual(name = "", values = c("Universal consensus" = 15, "Non-cancerous consensus" = 16,"Cancerous consensus" = 17)) +
+  scale_shape_manual(name = "", values = c("Universal consensus" = 15, "Non-cancer consensus" = 16,"Cancer consensus" = 17)) +
   theme_classic() +  labs(x=expression(log[10]~italic("| E |")), y=expression(F1-score)) +
-  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), axis.text.x = element_blank(), 
-        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"), axis.ticks.x = element_blank(),
+  theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), legend.title = element_text(size = 12, face = "bold"),
         axis.title = element_text(size = 12, face = "bold"))
 
 ```

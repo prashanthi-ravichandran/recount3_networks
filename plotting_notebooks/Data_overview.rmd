@@ -521,7 +521,7 @@ p_list <- lapply(p_list, function(p){
 })
 
 p_list[[1]] <- p_list[[1]] + ggtitle("Myeloid cells") 
-p_list[[2]] <- p_list[[2]] + ggtitle("PBMCs and T cells")
+p_list[[2]] <- p_list[[2]] + ggtitle("PBMCs/T cells")
 p_list[[3]] <- p_list[[3]] + ggtitle("B cells")
 ```
 

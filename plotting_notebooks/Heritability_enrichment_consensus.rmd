@@ -74,7 +74,7 @@ p2 <- ggplot() +
 
 title_normal <- ggdraw() + 
     draw_label(
-      "Meta-Analysis of 42 Independent Traits (Non-cancerous consensus)",
+      "Meta-Analysis of 42 Independent Traits (Non-cancer consensus)",
       fontface = 'bold',
       x = 0,
       size = 16,
@@ -146,6 +146,9 @@ plot_grid(title_all, plot_grid(p3, p4, nrow = 1, rel_widths = c(1, 1, 0.2)), leg
 
 ```{r, fig.width=10, fig.height=4}
 consensus_res <- readRDS(paste0(resDir, "consensus_independent_sumstats.rds"))
+consensus_res$net <- as.character(consensus_res$net)
+consensus_res$net[consensus_res$net == "Non-cancerous consensus"] <- "Non-cancer consensus"
+consensus_res$net <- factor(consensus_res$net, levels = c("Universal consensus", "Non-cancer consensus"))
 consensus_res_1 <- consensus_res[consensus_res$Control == "All genes", ]
 consensus_res_2 <- consensus_res[consensus_res$Control == "All genes + Baseline", ]
 
@@ -246,7 +249,7 @@ p2 <- ggplot() +
 
 title_normal <- ggdraw() + 
     draw_label(
-      "Meta-Analysis of 219 UKBB Traits (Non-cancerous consensus)",
+      "Meta-Analysis of 219 UKBB Traits (Non-cancer consensus)",
       fontface = 'bold',
       x = 0,
       size = 16,
@@ -318,6 +321,10 @@ plot_grid(title_all, plot_grid(p3, p4, nrow = 1, rel_widths = c(1, 1, 0.2)), leg
 
 ```{r, fig.width=10, fig.height=4}
 consensus_UKBB <- readRDS(paste0(resDir, "consensus_UKBB.rds"))
+consensus_UKBB$net <- as.character(consensus_UKBB$net)
+consensus_UKBB$net[consensus_UKBB$net == "Non-cancerous consensus"] <- "Non-cancer consensus"
+consensus_UKBB$net <- factor(consensus_UKBB$net, levels = c("Universal consensus", "Non-cancer consensus"))
+
 consensus_UKBB_1 <- consensus_UKBB[consensus_UKBB$Control == "All genes", ]
 consensus_UKBB_2 <- consensus_UKBB[consensus_UKBB$Control == "All genes + Baseline", ]
 

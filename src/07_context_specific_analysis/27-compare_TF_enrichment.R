@@ -106,16 +106,16 @@ normal_net <- readRDS(paste0(resDir, "normal_consensus/net_629/lambda_",
 net <- c(net, list("all_consensus" = all_net, "normal_consensus" = normal_net))
 
 geneData <- readRDS(paste0(datDir, "geneData.rds"))
-net <- lapply(net, function(inet){
-  gene_ids <- rownames(inet)
-  geneSymbols <- c()
-  for(i in c(1:length(gene_ids))){
-    geneSymbols[i] <- geneData$gene_name[geneData$gene_id == gene_ids[i]]
-  }
-  rownames(inet) <- geneSymbols
-  colnames(inet) <- geneSymbols
-  inet
-})
+# net <- lapply(net, function(inet){
+#   gene_ids <- rownames(inet)
+#   geneSymbols <- c()
+#   for(i in c(1:length(gene_ids))){
+#     geneSymbols[i] <- geneData$gene_name[geneData$gene_id == gene_ids[i]]
+#   }
+#   rownames(inet) <- geneSymbols
+#   colnames(inet) <- geneSymbols
+#   inet
+# })
 
 edgeList <- lapply(net, function(inet){
   ngenes <- dim(inet)[1]
@@ -145,8 +145,15 @@ degreeCentrality_list <- lapply(net, function(inet){
 tissue_specific_TFs <- read.csv(paste0(datDir, "tissue_specific_TFs.csv"))
 tissue_specific_TFs$X <- NULL
 
-all_TFs <- unique(unlist(str_split(tissue_specific_TFs$Transcription.Factors, ", ")))
-non_TFs <- geneData$gene_name[!geneData$gene_name %in% all_TFs]
+all_TFs <- unique(unlist(str_split(tissue_specific_TFs$Transcription.Factors..Ensembl., ",")))
+
+genes <- rownames(net[[1]])
+for(i in c(2:length(net))){
+  genes <- intersect(genes, rownames(net[[i]]))
+}
+
+genes <- gsub("\\..*","",genes)
+non_TFs <- genes[!genes %in% all_TFs]
 
 # Brain TFs
 brain_centrality <- degreeCentrality_list[["central_nervous_system"]]
@@ -159,23 +166,24 @@ pancreas_centrality <- degreeCentrality_list[["pancreas"]]
 all_centrality <- degreeCentrality_list[["all_consensus"]]
 normal_centrality <- degreeCentrality_list[["normal_consensus"]]
 
-brain_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "All Brain Tissues"]
-cardiac_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Heart (Left Ventricle and Atrial Appendage)"]
-lung_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Lung"]
-muscle_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Muscle - Skeletal"]
-pancreas_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Pancreas"]
-skin_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Skin (Suprapubic and Lower Leg)"]
-blood_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "Whole Blood"]
-general_TFs <- tissue_specific_TFs$Transcription.Factors[tissue_specific_TFs$Tissue == "General"]
+brain_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "All Brain Tissues"]
+brain_TFs <- c(brain_TFs, tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Spinal Cord"])
+cardiac_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Heart (Left Ventricle and Atrial Appendage)"]
+lung_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Lung"]
+muscle_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Muscle - Skeletal"]
+pancreas_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Pancreas"]
+skin_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Skin (Suprapubic and Lower Leg)"]
+blood_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "Whole Blood"]
+general_TFs <- tissue_specific_TFs$Transcription.Factors..Ensembl.[tissue_specific_TFs$Tissue == "General"]
 
-brain_TFs <- str_split(brain_TFs, ", ")
-blood_TFs <- str_split(blood_TFs, ", ")
-cardiac_TFs <- str_split(cardiac_TFs, ", ")
-lung_TFs <- str_split(lung_TFs, ", ")
-muscle_TFs <- str_split(muscle_TFs, ", ")
-pancreas_TFs <- str_split(pancreas_TFs, ", ")
-skin_TFs <- str_split(skin_TFs, ", ")
-general_TFs <- str_split(general_TFs, ", ")
+brain_TFs <- str_split(brain_TFs, ",")
+blood_TFs <- str_split(blood_TFs, ",")
+cardiac_TFs <- str_split(cardiac_TFs, ",")
+lung_TFs <- str_split(lung_TFs, ",")
+muscle_TFs <- str_split(muscle_TFs, ",")
+pancreas_TFs <- str_split(pancreas_TFs, ",")
+skin_TFs <- str_split(skin_TFs, ",")
+general_TFs <- str_split(general_TFs, ",")
 
 brain_TFs <- unlist(brain_TFs)
 blood_TFs <- unlist(blood_TFs)
@@ -187,6 +195,17 @@ skin_TFs <- unlist(skin_TFs)
 general_TFs <- unlist(general_TFs)
 all_tissue_spec_TFs <- unique(c(brain_TFs, blood_TFs, cardiac_TFs, lung_TFs, muscle_TFs, 
                                 pancreas_TFs, skin_TFs))
+
+brain_centrality$genes <- gsub("\\..*","",brain_centrality$genes)
+blood_centrality$genes <- gsub("\\..*","",blood_centrality$genes)
+cardiac_centrality$genes <- gsub("\\..*","",cardiac_centrality$genes)
+lung_centrality$genes <- gsub("\\..*","",lung_centrality$genes)
+muscle_centrality$genes <- gsub("\\..*","",muscle_centrality$genes)
+pancreas_centrality$genes <- gsub("\\..*","",pancreas_centrality$genes)
+skin_centrality$genes <- gsub("\\..*","",skin_centrality$genes)
+all_centrality$genes <- gsub("\\..*","",all_centrality$genes)
+normal_centrality$genes <- gsub("\\..*","",normal_centrality$genes)
+
 
 centrality_of_tissue_TFs <- list()
 centrality_of_tissue_TFs[[1]] <- brain_centrality$degree[brain_centrality$genes %in% brain_TFs]
@@ -243,8 +262,8 @@ centrality_of_general_TFs_df$Tissue[grep("Skin", centrality_of_general_TFs_df$Ti
 centrality_of_general_TFs_df$Tissue[grep("Universal consensus", centrality_of_general_TFs_df$Tissue)] <- "Universal consensus"
 centrality_of_general_TFs_df$Tissue[grep("Non-cancerous consensus", centrality_of_general_TFs_df$Tissue)] <- "Non-cancerous consensus"
 
-set.seed(100)
-non_TFs_select <- sample(non_TFs, 45)
+set.seed(0)
+non_TFs_select <- sample(non_TFs, 100)
 centrality_of_non_TFs <- list()
 centrality_of_non_TFs[[1]] <- brain_centrality$degree[brain_centrality$genes %in% non_TFs_select]
 centrality_of_non_TFs[[2]] <- blood_centrality$degree[blood_centrality$genes %in% non_TFs_select]
@@ -286,3 +305,40 @@ TFs_res$Tissue[TFs_res$Tissue == "Brain"] <- "CNS\nconsensus"
 TFs_res$Tissue <- factor(TFs_res$Tissue, levels = c("Blood\nconsensus", "Lung\nconsensus", "Skin\nconsensus", "Pancreas\nconsensus", "Cardiac\nconsensus", "Muscle\nconsensus", "CNS\nconsensus", "Universal\nconsensus", "Non-cancerous\nconsensus"))
 
 saveRDS(TFs_res, paste0(resDir, "TF_enrichment.rds"))
+
+
+TFs_res$Category <- as.character(TFs_res$Category)
+TFs_res$Category <- factor(TFs_res$Category, levels = c("Not a TF", "General TFs", "Tissue specific TFs"))
+
+TFs_res$Tissue <- as.character(TFs_res$Tissue)
+TFs_res$Tissue[grep("CNS", TFs_res$Tissue)] <- "CNS"
+TFs_res$Tissue[grep("Blood", TFs_res$Tissue)] <- "Blood"
+TFs_res$Tissue[grep("Lung", TFs_res$Tissue)] <- "Lung"
+TFs_res$Tissue[grep("Cardiac", TFs_res$Tissue)] <- "Cardiac"
+TFs_res$Tissue[grep("Pancreas", TFs_res$Tissue)] <- "Pancreas"
+TFs_res$Tissue[grep("Skin", TFs_res$Tissue)] <- "Skin"
+TFs_res$Tissue[grep("Muscle", TFs_res$Tissue)] <- "Skeletal Muscle"
+TFs_res$Tissue[grep("Non-cancerous", TFs_res$Tissue)] <- "Non-cancer\nconsensus"
+TFs_res$Tissue <- factor(TFs_res$Tissue, levels = c("Blood", "Cardiac", "CNS", "Lung", 
+                                                    "Pancreas", "Skeletal Muscle", "Skin", "Non-cancer\nconsensus", "Universal\nconsensus"))
+
+stat.test <- TFs_res %>%
+  group_by(Tissue) %>%
+  wilcox_test(Degree ~ Category)
+stat.test <- stat.test %>%
+  add_xy_position(x = "Tissue", dodge = 0.8)
+stat.test$p.adj.signif[stat.test$p.adj.signif == "****"] <- "p < 1e-4"
+stat.test$p.adj.signif[stat.test$p.adj.signif == "***"] <- "p < 0.001"
+stat.test$p.adj.signif[stat.test$p.adj.signif == "**"] <- "p < 0.01"
+stat.test$p.adj.signif[stat.test$p.adj.signif == "*"] <- "p < 0.1"
+
+ggplot(TFs_res, aes(x = Tissue, y = Degree)) + 
+  geom_boxplot(aes(fill = Category), outlier.colour = "darkgrey", outlier.size =  0.5) + theme_classic() +
+  ggtitle("Tissue-specific network\nnode degree distributions") + coord_flip() +
+  stat_pvalue_manual(stat.test, label = "p.adj.signif", tip.length = 0.01,
+                     bracket.nudge.y = -1, hide.ns = TRUE, size = 3.5, fontface = "bold") + 
+  xlab("") + 
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
+

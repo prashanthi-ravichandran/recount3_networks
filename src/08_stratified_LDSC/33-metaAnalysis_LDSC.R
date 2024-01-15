@@ -255,7 +255,7 @@ get_legend<-function(myggplot){
 }
 
 ## Main code ##
-trait_set <- "UKBB"
+trait_set <- "independent_sumstats"
 all_consensus_0.14 <- make_plot_df("all_consensus", "0.14", trait_set)
 all_consensus_0.16 <- make_plot_df("all_consensus", "0.16", trait_set)
 all_consensus_0.18 <- make_plot_df("all_consensus", "0.18", trait_set)

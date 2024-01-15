@@ -135,9 +135,25 @@ p3
 ```{r, fig.height=7, fig.width=8}
 resDir <- paste0(homeDir, "results/weighted_cov_networks/")
 TFs_res <- readRDS(paste0(resDir, "TF_enrichment.rds"))
+
+TFs_res$Category <- as.character(TFs_res$Category)
+TFs_res$Category <- factor(TFs_res$Category, levels = c("Not a TF", "General TFs", "Tissue specific TFs"))
+
+TFs_res$Tissue <- as.character(TFs_res$Tissue)
+TFs_res$Tissue[grep("CNS", TFs_res$Tissue)] <- "CNS"
+TFs_res$Tissue[grep("Blood", TFs_res$Tissue)] <- "Blood"
+TFs_res$Tissue[grep("Lung", TFs_res$Tissue)] <- "Lung"
+TFs_res$Tissue[grep("Cardiac", TFs_res$Tissue)] <- "Cardiac"
+TFs_res$Tissue[grep("Pancreas", TFs_res$Tissue)] <- "Pancreas"
+TFs_res$Tissue[grep("Skin", TFs_res$Tissue)] <- "Skin"
+TFs_res$Tissue[grep("Muscle", TFs_res$Tissue)] <- "Skeletal Muscle"
+TFs_res$Tissue[grep("Non-cancerous", TFs_res$Tissue)] <- "Non-cancer\nconsensus"
+TFs_res$Tissue <- factor(TFs_res$Tissue, levels = c("Blood", "Cardiac", "CNS", "Lung", 
+                                                        "Pancreas", "Skeletal Muscle", "Skin", "Non-cancer\nconsensus", "Universal\nconsensus"))
+
 stat.test <- TFs_res %>%
    group_by(Tissue) %>%
-   wilcox_test(Degree ~ Category, ref.group = "Tissue specific TFs")
+   wilcox_test(Degree ~ Category)
  stat.test <- stat.test %>%
    add_xy_position(x = "Tissue", dodge = 0.8)
  stat.test$p.adj.signif[stat.test$p.adj.signif == "****"] <- "p < 1e-4"
@@ -148,12 +164,12 @@ stat.test <- TFs_res %>%
 ggplot(TFs_res, aes(x = Tissue, y = Degree)) + 
    geom_boxplot(aes(fill = Category), outlier.colour = "darkgrey", outlier.size =  0.5) + theme_classic() +
    ggtitle("Tissue-specific network\nnode degree distributions") + coord_flip() +
-   stat_pvalue_manual( stat.test, label = "p.adj.signif", tip.length = 0.01,
-                       bracket.nudge.y = -2, hide.ns = TRUE, size = 5) + 
-   xlab("") + theme(legend.title=element_blank(), legend.position = "bottom", plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
-         legend.text = element_text(size = 12, face = "bold"), 
-         axis.title = element_text(size = 12, face = "bold"))
-
+   stat_pvalue_manual(stat.test, label = "p.adj.signif", tip.length = 0.01,
+                       bracket.nudge.y = -1, hide.ns = TRUE, size = 3.5, fontface = "bold") + 
+   xlab("") + 
+  theme(legend.title = element_text(size = 12, face = "bold"), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        legend.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")
 
 ```
 

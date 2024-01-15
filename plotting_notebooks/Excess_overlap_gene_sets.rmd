@@ -112,8 +112,8 @@ lung_consensus_res <- do.call(rbind, lung_consensus_res)
 skin_consensus_res <- do.call(rbind, skin_consensus_res)
 
 
-cancer_consensus_res$Samples_agg <- "Cancerous consensus"
-normal_consensus_res$Samples_agg <- "Non-cancerous consensus"
+cancer_consensus_res$Samples_agg <- "Cancer consensus"
+normal_consensus_res$Samples_agg <- "Non-cancer consensus"
 all_consensus_res$Samples_agg <- "Universal consensus"
 blood_consensus_res$Samples_agg <- "Blood"
 cns_consensus_res$Samples_agg <- "CNS"
@@ -122,12 +122,12 @@ liver_consensus_res$Samples_agg <- "Liver"
 lung_consensus_res$Samples_agg <- "Lung"
 skin_consensus_res$Samples_agg <- "Skin"
 
-consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res) 
-context_res <- rbind(blood_consensus_res, cns_consensus_res, adipose_consensus_res, liver_consensus_res, lung_consensus_res, skin_consensus_res)
+consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res, blood_consensus_res, cns_consensus_res) 
+context_res <- rbind(adipose_consensus_res, liver_consensus_res, lung_consensus_res, skin_consensus_res)
 
-consensus_res$Samples_agg <- factor(consensus_res$Samples_agg, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
+consensus_res$Samples_agg <- factor(consensus_res$Samples_agg, levels = c("Universal consensus", "Non-cancer consensus", "Cancer consensus", "Blood", "CNS"))
 
-context_res$Samples_agg <- factor(context_res$Samples_agg, levels = c("Blood", "CNS", "Adipose", "Liver", "Lung", "Skin"))
+context_res$Samples_agg <- factor(context_res$Samples_agg, levels = c( "Adipose", "Liver", "Lung", "Skin"))
 
 cancer_consensus_summ <- cancer_consensus_res %>%
 group_by(Decile, Gene_set) %>%
@@ -174,8 +174,8 @@ skin_consensus_summ <- skin_consensus_res %>%
    summarise(Enrichment_mean = (mean(Enrichment)),
              Enrichment_sd = (sd(Enrichment)))
 
-cancer_consensus_summ$Samples_agg <- "Cancerous consensus"
-normal_consensus_summ$Samples_agg <- "Non-cancerous consensus"
+cancer_consensus_summ$Samples_agg <- "Cancer consensus"
+normal_consensus_summ$Samples_agg <- "Non-cancer consensus"
 all_consensus_summ$Samples_agg <- "Universal consensus"
 blood_consensus_summ$Samples_agg <- "Blood"
 cns_consensus_summ$Samples_agg <- "CNS"
@@ -189,22 +189,21 @@ skin_consensus_summ$Samples_agg <- "Skin"
 ## Consensus networks 
 
 ```{r, fig.width=8, fig.height=6}
-consensus_summ <- rbind(all_consensus_summ, normal_consensus_summ, cancer_consensus_summ)
-context_summ <- rbind(blood_consensus_summ, cns_consensus_summ, 
-                      adipose_consensus_summ, liver_consensus_summ, 
+consensus_summ <- rbind(all_consensus_summ, normal_consensus_summ, cancer_consensus_summ, blood_consensus_summ, cns_consensus_summ)
+context_summ <- rbind(adipose_consensus_summ, liver_consensus_summ, 
                       lung_consensus_summ, skin_consensus_summ)
-consensus_summ$Samples_agg <- factor(consensus_summ$Samples_agg, levels = c("Universal consensus", "Non-cancerous consensus", "Cancerous consensus"))
-context_summ$Samples_agg <- factor(context_summ$Samples_agg, levels = c("Blood", "CNS", "Adipose", "Liver", "Lung", "Skin"))
+consensus_summ$Samples_agg <- factor(consensus_summ$Samples_agg, levels = c("Universal consensus", "Non-cancer consensus", "Cancer consensus", "Blood", "CNS"))
+context_summ$Samples_agg <- factor(context_summ$Samples_agg, levels = c("Adipose", "Liver", "Lung", "Skin"))
 
 plot_geneSet <- function(gs, df){
    df <- df[df$Gene_set == gs, ]
    df$Decile <- factor(df$Decile, levels = c("1", "2", "3", "4", "5"))
    p <- ggplot(df, aes(x = Decile, y = Enrichment, fill = Samples_agg)) + geom_boxplot() + theme_classic() + geom_hline(yintercept = 1, linewidth = 0.4, linetype = 2) +
-        ggtitle(gs) + xlab("Quintile") + ylab("Excess overlap") + scale_fill_brewer(name = "Samples aggregated",palette="Dark2") +
+        ggtitle(gs) + xlab("Quintile") + ylab("Excess overlap") + scale_fill_brewer(name = "Samples aggregated",palette="Set1") +
      theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"),
            legend.text = element_text(size = 14, face = "bold"),
            axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom")+
-     guides(fill=guide_legend("", nrow=2, byrow=TRUE)) 
+     guides(fill=guide_legend("", nrow=1)) 
     p
  }
 

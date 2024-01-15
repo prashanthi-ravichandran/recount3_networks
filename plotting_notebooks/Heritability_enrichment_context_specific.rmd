@@ -73,7 +73,7 @@ p2 <- ggplot() +
 
 title_blood_consensus <- ggdraw() + 
   draw_label(
-    "Meta-Analysis of 9 Blood Traits (Blood consensus)",
+    "Meta-Analysis of 9 Blood Traits (Blood)",
     fontface = 'bold',
     x = 0,
     size = 16,
@@ -142,6 +142,9 @@ plot_grid(title_blood_GTEx, plot_grid(p3, p4, nrow = 1, rel_widths = c(1, 1)), l
 ```
 
 ```{r, fig.width=10, fig.height=4}
+blood_res_1$net[blood_res_1$net == "Blood consensus"] <- "Blood"
+blood_res_2$net[blood_res_2$net == "Blood consensus"] <- "Blood"
+
 blood_res_mean_1 <- blood_res_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), mean)
 blood_res_sd_1 <- blood_res_1 %>% group_by(Centrality, Control, net) %>% summarise_at(vars("Enrichment", "Coefficient", ), sd)
 blood_res_mean_1$Enrichment_sd <- blood_res_sd_1$Enrichment
@@ -240,6 +243,7 @@ cns_indep_traits <- c("PASS_Alzheimers_Jansen2019","PASS_Epilepsy_Anney_2014","P
                       "PASS_BIP_Stahl2019", "PASS_SmokingCessation_Liu2019","UKB_460K.body_WHRadjBMIz",
                       "PASS_BDSCZ_Ruderfer2018", "PASS_MDD_Wray2018", "PASS_DrinksPerWeek_Liu2019") 
 cns_res <- readRDS(paste0(resDir, "cns_res.rds"))
+cns_res$net[cns_res$net == "CNS consensus"] <- "CNS"
 cns_res_1 <- cns_res[cns_res$Control == "All genes", ]
 cns_res_2 <- cns_res[cns_res$Control == "All genes + Baseline", ]
 
@@ -305,12 +309,12 @@ plot_grid(title_cns_GTEx, plot_grid(p7, p8, nrow = 1, rel_widths = c(1, 1)), leg
 
 ```{r, fig.width=10, fig.height=4}
 p9 <- ggplot() +
-  geom_bar(data = cns_res_1[cns_res_1$net == "CNS consensus", ], mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
-  geom_bar(data = cns_res_2[cns_res_2$net == "CNS consensus", ], mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = cns_res_1[cns_res_1$net == "CNS", ], mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = cns_res_2[cns_res_2$net == "CNS", ], mapping = aes(x = Centrality, y = Enrichment, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
   scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Enrichment") +
   geom_hline(yintercept=1, colour = "black", linetype = 2, linewidth = 0.4) +
-  geom_errorbar(data = cns_res_1[cns_res_1$net == "CNS consensus", ], mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
-  geom_errorbar(data = cns_res_2[cns_res_2$net == "CNS consensus", ], mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  geom_errorbar(data = cns_res_1[cns_res_1$net == "CNS", ], mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = cns_res_2[cns_res_2$net == "CNS", ], mapping = aes(x = Centrality, ymin = Enrichment - Enrichment_std_error, ymax = Enrichment + Enrichment_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
   scale_alpha_manual(values = c("All genes" = 0.3, "All genes + Baseline" = 1)) + 
   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
@@ -319,12 +323,12 @@ p9 <- ggplot() +
 
 
 p10 <- ggplot() +
-  geom_bar(data = cns_res_1[cns_res_1$net == "CNS consensus", ], mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
-  geom_bar(data = cns_res_2[cns_res_2$net == "CNS consensus", ], mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = cns_res_1[cns_res_1$net == "CNS", ], mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
+  geom_bar(data = cns_res_2[cns_res_2$net == "CNS", ], mapping = aes(x = Centrality, y = Coefficient, fill = Lambda, alpha = Control), stat = 'identity', position = 'dodge', colour = "black") +
   scale_fill_brewer(palette = "BrBG") + theme_classic2() + xlab("") + ylab("Coefficient") +
   geom_hline(yintercept=0, colour = "black", linetype = 2, linewidth = 0.4) +
-  geom_errorbar(data = cns_res_1[cns_res_1$net == "CNS consensus", ], mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
-  geom_errorbar(data = cns_res_2[cns_res_2$net == "CNS consensus", ], mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
+  geom_errorbar(data = cns_res_1[cns_res_1$net == "CNS", ], mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) +
+  geom_errorbar(data = cns_res_2[cns_res_2$net == "CNS", ], mapping = aes(x = Centrality, ymin = Coefficient - Coefficient_std_error, ymax = Coefficient + Coefficient_std_error, fill = Lambda), width = 0.2, position=position_dodge(0.9)) + 
   scale_alpha_manual(values = c("All genes" = 0.4, "All genes + Baseline" = 1)) + 
   theme(plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
@@ -333,7 +337,7 @@ p10 <- ggplot() +
 
 title_cns_consensus <- ggdraw() + 
   draw_label(
-    paste0("Meta-Analysis of ", length(cns_indep_traits),  " CNS Traits (CNS consensus)"),
+    paste0("Meta-Analysis of ", length(cns_indep_traits),  " CNS Traits (CNS)"),
     fontface = 'bold',
     x = 0,
     size = 16,
