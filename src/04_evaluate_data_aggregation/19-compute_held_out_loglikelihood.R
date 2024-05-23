@@ -52,7 +52,7 @@ lambda <- sprintf("%.2f", lambda)
 
 homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
 res.dir <- paste0(homeDir, "results/")
-dat.dir <- paste0(homeDir, "/data")
+dat.dir <- paste0(homeDir, "data/")
 
 inputArgs <- commandArgs(TRUE)
 
@@ -70,6 +70,11 @@ if(study == "GTEx"){
   }
 }
 
+print("The network analyzed is")
+print(paste0("Data: ", study))
+print(paste0("Aggregation type: ", agg_type))
+print(paste0("Num studies aggregated: ", nStudies))
+
 # Read in the networks
 index <- 1
 net <- list()
@@ -86,11 +91,13 @@ for(ilambda in lambda){
 
 # Find edges
 inferred.networks <- edge.list(net)
+print("Obtained the inferred network edge list")
 
 n.edges <- lapply(inferred.networks, function(iedge){
   length(iedge)
 })
 n.edges <- unlist(n.edges)
+print("Computed the number of edges")
 
 # Read in the test data
 gtex_metaData <- readRDS(paste0(dat.dir, "GTEx/study_metaData.rds"))
@@ -114,7 +121,7 @@ if(test.study == "GTEx"){
 
 num.studies <- length(test.covariances)
 if(test.study == "sra_normal"){
-  ntest <- sra_metaData$n[match(names(test.covariances), 
+  ntest <- sra_metaData$nsamples[match(names(test.covariances), 
                                 sra_metaData$study)]
 }
 if(test.study == "GTEx"){
@@ -145,7 +152,8 @@ loglikelihood <- list()
 for(itest in test.covariances){
   print(index)
   iloglikelihood <- lapply(net, function(theta){
-    ll <-  ntest[index]*(Matrix::determinant(theta, logarithm=T)$modulus[1] - sum(itest * theta))
+    ll <-  ntest[index]*(Matrix::determinant(theta, logarithm=T)$modulus[1] - sum(diag(itest * theta)))
+    cat(ll, "\n")
     ll
   })
   loglikelihood[[index]]<- unlist(iloglikelihood)
@@ -159,6 +167,6 @@ ll_mean <- rowMeans(ll_df)
 
 res <- data.frame(lambda, n.edges, ll_mean)
 
-saveRDS(res, paste0(res.dir, study, "/net_", nStudies, "/ll_", study.id, ".rds"))
+saveRDS(res, paste0(res.dir, study, "/net_", nStudies, "/ll_", nStudies, ".rds"))
 
 

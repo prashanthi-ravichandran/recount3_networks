@@ -1,7 +1,6 @@
 # Description
-# This script evaluates for a number of networks the endrichment of genes present in certain GO terms
+# This script evaluates for a number of networks the enrichment of genes present in certain GO terms
 # Among central network nodes
-rm(list = ls())
 .libPaths(c("/data/apps/extern/r-packages/4.2.0", 
             "/home/pravich2/R/x86_64-pc-linux-gnu-library/4.2", 
             "/data/apps/extern/spack_on/gcc/9.3.0/r/4.2.0-whb637mlxrrlrjerioexrx2ayqzq7zot/rlib/R/library"))
@@ -12,6 +11,8 @@ library(igraph)
 library(ggplot2)
 library(RColorBrewer)
 library(GOfuncR)
+library(dplyr)
+
 
 home.dir <- "/data/abattle4/prashanthi/recount3/"
 dat.dir <- paste0(home.dir, "data/")
@@ -29,8 +30,8 @@ make_contingency <- function(test, bg, set){
 
 kegg_enrichment <- function(genelist, background, pathway){
   cont.mat <- make_contingency(genelist , background , pathway)
-  res <- fisher.test(cont.mat, alternative = "greater", conf.int = T)
-  res$estimate
+  res <- fisher.test(cont.mat, conf.int = T)
+  res
 }
 
 net_odds_pathway <- function(agg_level, lambda, nstudies, GO_term){
@@ -57,14 +58,40 @@ net_odds_pathway <- function(agg_level, lambda, nstudies, GO_term){
   rownames(degree_df) <- c(1:dim(degree_df)[1])
   pathway <- get_anno_genes(GO_term)
   odds_ratio <- c()
-  for(degree_thres in unique(c(seq(5, max(degree_df$degree), 5), max(degree_df$degree)))){
-    test <- degree_df$gene[degree_df$degree <= degree_thres]
-    odds_ratio <- c(odds_ratio, kegg_enrichment(test, geneData$gene_name, pathway$gene))
+  p_value <- c()
+  odds_ratio_lower <- c()
+  odds_ratio_upper <- c()
+  zero_degree <- degree_df[degree_df$degree == 0, ]
+  nonzero_degree <- degree_df[degree_df$degree > 0, ]
+  zero_degree$decile <- 0
+  nonzero_degree$decile <- ntile(nonzero_degree$degree, 9)
+  degree_df <- rbind(zero_degree, nonzero_degree)
+  degree_df$decile <- degree_df$decile + 1
+  
+  for(idegree in c(1:max(degree_df$decile))){
+    test <- degree_df$gene[degree_df$decile >= idegree]
+    enrich_res <- kegg_enrichment(test, rownames(net), pathway$gene)
+    odds_ratio <- c(odds_ratio, enrich_res$estimate)
+    p_value <- c(p_value, enrich_res$p.value)
+    odds_ratio_lower <- c(odds_ratio_lower, enrich_res$conf.int[1])
+    odds_ratio_upper <- c(odds_ratio_upper, enrich_res$conf.int[2])
   }
-  res <- data.frame(unique(c(seq(5, max(degree_df$degree), 5), max(degree_df$degree))),
-                    odds_ratio)
-  colnames(res) <- c("degree", GO_term)
-  res
+  res_odds <- data.frame(c(1:max(degree_df$decile)), odds_ratio)
+  colnames(res_odds) <- c("degree", GO_term)
+  
+  res_pvalue <- data.frame(c(1:max(degree_df$decile)),p_value)
+  colnames(res_pvalue) <- c("degree", GO_term)
+  
+  res_odds_lower <- data.frame(c(1:max(degree_df$decile)), odds_ratio_lower)
+  colnames(res_odds_lower) <- c("degree", GO_term)
+  
+  res_odds_upper <- data.frame(c(1:max(degree_df$decile)),odds_ratio_upper)
+  colnames(res_odds_upper) <- c("degree", GO_term)
+  
+  list("odds_ratio" = res_odds,
+       "pvalue" = res_pvalue, 
+       "odds_ratio_lower" = res_odds_lower,
+       "odds_ratio_upper" = res_odds_upper)
 }
 
 # List of consensus pathways
@@ -96,7 +123,6 @@ liver_pathways <- c("GO:0072576", "GO:0001889", "GO:0097421", "GO:0005977",
 lung_pathways <- c("GO:0060503", "GO:0060510", "GO:0060479", "GO:0015671", 
                    "GO:0060428", "GO:0061145", "GO:0061141", "GO:0014916", 
                    "GO:0070254")
-
 
 all_consensus_res <- lapply(consensus_pathways, function(GO_term){
   net_odds_pathway("all_consensus", 0.18, 966, GO_term)
@@ -229,132 +255,100 @@ cns_consensus_liver <- lapply(liver_pathways, function(GO_term){
 })
 
 
-convert_list_to_df <- function(ilist, index){
-  df <- ilist[[1]]
+convert_list_to_df <- function(ilist, net){
+  odds <- ilist[[1]][["odds_ratio"]]
+  odds_lower <- ilist[[1]][["odds_ratio_lower"]]
+  odds_upper <- ilist[[1]][["odds_ratio_upper"]]
+  pvalue <- ilist[[1]][["pvalue"]]
   for(i in c(2:length(ilist))){
-    idf <- ilist[[i]]
-    idf <- idf[match(df[ ,index], idf[ ,index]), ]
-    idf[ ,index] <- NULL
-    df <- cbind(df, idf)
+    odds <- odds %>% left_join(ilist[[i]][["odds_ratio"]], by = "degree")
+    odds_lower <- odds_lower %>% left_join(ilist[[i]][["odds_ratio_lower"]], by = "degree")
+    odds_upper <- odds_upper %>% left_join(ilist[[i]][["odds_ratio_upper"]], by = "degree")
+    pvalue <- pvalue %>% left_join(ilist[[i]][["pvalue"]], by = "degree")
   }
-  df
+  odds <- reshape2::melt(odds, id.vars = "degree")
+  odds_lower <- reshape2::melt(odds_lower, id.vars = "degree")
+  odds_upper <- reshape2::melt(odds_upper, id.vars = "degree")
+  pvalue <- reshape2::melt(pvalue, id.vars = "degree")
+  
+  colnames(odds) <- c("degree", "pathway", "odds_ratio")
+  colnames(odds_lower) <- c("degree", "pathway", "odds_ratio_lower")
+  colnames(odds_upper) <- c("degree", "pathway", "odds_ratio_upper")
+  colnames(pvalue) <- c("degree", "pathway", "pvalue")
+  
+  res <- odds %>% left_join(odds_lower, by = c("degree", "pathway")) %>%
+         left_join(odds_upper, by = c("degree", "pathway")) %>%
+         left_join(pvalue, by = c("degree", "pathway"))
+  res$net <- net
+  res
 }
 
-all_consensus_res <- convert_list_to_df(all_consensus_res, "degree")
-normal_consensus_res <- convert_list_to_df(normal_consensus_res, "degree")
-cancer_consensus_res <- convert_list_to_df(cancer_consensus_res, "degree")
-cns_consensus_res <- convert_list_to_df(cns_consensus_res, "degree")
-blood_consensus_res <- convert_list_to_df(blood_consensus_res, "degree")
+all_consensus_res <- convert_list_to_df(all_consensus_res, "Universal consensus")
+normal_consensus_res <- convert_list_to_df(normal_consensus_res, "Non-cancerous consensus")
+cancer_consensus_res <- convert_list_to_df(cancer_consensus_res, "Cancerous consensus")
+cns_consensus_res <- convert_list_to_df(cns_consensus_res, "CNS")
+blood_consensus_res <- convert_list_to_df(blood_consensus_res, "Blood")
 
-all_consensus_neural <- convert_list_to_df(all_consensus_neural, "degree")
-normal_consensus_neural <- convert_list_to_df(normal_consensus_neural, "degree")
-cns_GTEx_neural <- convert_list_to_df(cns_GTEx_neural, "degree")
-cns_consensus_neural <- convert_list_to_df(cns_consensus_neural, "degree")
-blood_consensus_neural <- convert_list_to_df(blood_consensus_neural, "degree")
+all_consensus_neural <- convert_list_to_df(all_consensus_neural, "Universal consensus")
+normal_consensus_neural <- convert_list_to_df(normal_consensus_neural, "Non-cancerous consensus")
+cns_GTEx_neural <- convert_list_to_df(cns_GTEx_neural, "CNS (GTEx)")
+cns_consensus_neural <- convert_list_to_df(cns_consensus_neural, "CNS")
+blood_consensus_neural <- convert_list_to_df(blood_consensus_neural, "Blood")
 
-all_consensus_blood <- convert_list_to_df(all_consensus_blood, "degree")
-normal_consensus_blood <- convert_list_to_df(normal_consensus_blood, "degree")
-blood_GTEx_blood <- convert_list_to_df(blood_GTEx_blood, "degree")
-blood_consensus_blood <- convert_list_to_df(blood_consensus_blood, "degree")
-cns_consensus_blood <- convert_list_to_df(cns_consensus_blood, "degree")
+all_consensus_blood <- convert_list_to_df(all_consensus_blood, "Universal consensus")
+normal_consensus_blood <- convert_list_to_df(normal_consensus_blood, "Non-cancerous consensus")
+blood_GTEx_blood <- convert_list_to_df(blood_GTEx_blood, "Blood (GTEx)")
+blood_consensus_blood <- convert_list_to_df(blood_consensus_blood, "Blood")
+cns_consensus_blood <- convert_list_to_df(cns_consensus_blood, "CNS")
 
-all_consensus_skin <- convert_list_to_df(all_consensus_skin, "degree")
-normal_consensus_skin <- convert_list_to_df(normal_consensus_skin, "degree")
-skin_GTEx_skin <- convert_list_to_df(skin_GTEx_skin, "degree")
-skin_consensus_skin <- convert_list_to_df(skin_consensus_skin, "degree")
-blood_consensus_skin <- convert_list_to_df(blood_consensus_skin, "degree")
-cns_consensus_skin <- convert_list_to_df(cns_consensus_skin, "degree")
+all_consensus_skin <- convert_list_to_df(all_consensus_skin, "Universal consensus")
+normal_consensus_skin <- convert_list_to_df(normal_consensus_skin, "Non-cancerous consensus")
+skin_GTEx_skin <- convert_list_to_df(skin_GTEx_skin, "Skin (GTEx)")
+skin_consensus_skin <- convert_list_to_df(skin_consensus_skin, "Skin")
+blood_consensus_skin <- convert_list_to_df(blood_consensus_skin, "Blood")
+cns_consensus_skin <- convert_list_to_df(cns_consensus_skin, "CNS")
 
+all_consensus_adipose <- convert_list_to_df(all_consensus_adipose, "Universal consensus")
+normal_consensus_adipose <- convert_list_to_df(normal_consensus_adipose, "Non-cancerous consensus")
+adipose_GTEx_adipose <- convert_list_to_df(adipose_GTEx_adipose, "Adipose (GTEx)")
+adipose_consensus_adipose <- convert_list_to_df(adipose_consensus_adipose, "Adipose")
+blood_consensus_adipose <- convert_list_to_df(blood_consensus_adipose, "Blood")
+cns_consensus_adipose <- convert_list_to_df(cns_consensus_adipose, "CNS")
 
-all_consensus_adipose <- convert_list_to_df(all_consensus_adipose, "degree")
-normal_consensus_adipose <- convert_list_to_df(normal_consensus_adipose, "degree")
-adipose_GTEx_adipose <- convert_list_to_df(adipose_GTEx_adipose, "degree")
-adipose_consensus_adipose <- convert_list_to_df(adipose_consensus_adipose, "degree")
-blood_consensus_adipose <- convert_list_to_df(blood_consensus_adipose, "degree")
-cns_consensus_adipose <- convert_list_to_df(cns_consensus_adipose, "degree")
+all_consensus_liver <- convert_list_to_df(all_consensus_liver, "Universal consensus")
+normal_consensus_liver <- convert_list_to_df(normal_consensus_liver, "Non-cancerous consensus")
+liver_GTEx_liver <- convert_list_to_df(liver_GTEx_liver, "Liver (GTEx)")
+liver_consensus_liver <- convert_list_to_df(liver_consensus_liver, "Liver")
+blood_consensus_liver <- convert_list_to_df(blood_consensus_liver, "Blood")
+cns_consensus_liver <- convert_list_to_df(cns_consensus_liver, "CNS")
 
-all_consensus_liver <- convert_list_to_df(all_consensus_liver, "degree")
-normal_consensus_liver <- convert_list_to_df(normal_consensus_liver, "degree")
-liver_GTEx_liver <- convert_list_to_df(liver_GTEx_liver, "degree")
-liver_consensus_liver <- convert_list_to_df(liver_consensus_liver, "degree")
-blood_consensus_liver <- convert_list_to_df(blood_consensus_liver, "degree")
-cns_consensus_liver <- convert_list_to_df(cns_consensus_liver, "degree")
-
-all_consensus_lung <- convert_list_to_df(all_consensus_lung, "degree")
-normal_consensus_lung <- convert_list_to_df(normal_consensus_lung, "degree")
-lung_GTEx_lung <- convert_list_to_df(lung_GTEx_lung, "degree")
-lung_consensus_lung <- convert_list_to_df(lung_consensus_lung, "degree")
-blood_consensus_lung <- convert_list_to_df(blood_consensus_lung, "degree")
-cns_consensus_lung <- convert_list_to_df(cns_consensus_lung, "degree")
-
-all_consensus_res$type <- "All samples"
-normal_consensus_res$type <- "Non-cancerous samples"
-cancer_consensus_res$type <- "Cancerous samples"
-cns_consensus_res$type <- "CNS"
-blood_consensus_res$type <- "Blood"
-
-
-all_consensus_neural$type <- "All samples"
-normal_consensus_neural$type <- "Non-cancerous samples"
-cns_consensus_neural$type <- "CNS"
-cns_GTEx_neural$type <- "CNS (GTEx)"
-blood_consensus_neural$type <- "Blood"
-
-all_consensus_skin$type <- "All samples"
-normal_consensus_skin$type <- "Non-cancerous samples"
-skin_consensus_skin$type <- "Skin"
-skin_GTEx_skin$type <- "Skin (GTEx)"
-blood_consensus_skin$type <- "Blood"
-cns_consensus_skin$type <- "CNS"
-
-all_consensus_blood$type <- "All samples"
-normal_consensus_blood$type <- "Non-cancerous samples"
-blood_consensus_blood$type <- "Blood"
-blood_GTEx_blood$type <- "Blood (GTEx)"
-cns_consensus_blood$type <- "CNS"
-
-all_consensus_adipose$type <- "All samples"
-normal_consensus_adipose$type <- "Non-cancerous samples"
-adipose_consensus_adipose$type <- "Adipose"
-adipose_GTEx_adipose$type <- "Adipose (GTEx)"
-blood_consensus_adipose$type <- "Blood"
-cns_consensus_adipose$type <- "CNS"
-
-all_consensus_liver$type <- "All samples"
-normal_consensus_liver$type <- "Non-cancerous samples"
-liver_consensus_liver$type <- "Liver"
-liver_GTEx_liver$type <- "Liver (GTEx)"
-blood_consensus_liver$type <- "Blood"
-cns_consensus_liver$type <- "CNS"
-
-
-all_consensus_lung$type <- "All samples"
-normal_consensus_lung$type <- "Non-cancerous samples"
-lung_consensus_lung$type <- "Lung"
-lung_GTEx_lung$type <- "Lung (GTEx)"
-blood_consensus_lung$type <- "Blood"
-cns_consensus_lung$type <- "CNS"
+all_consensus_lung <- convert_list_to_df(all_consensus_lung, "Universal consensus")
+normal_consensus_lung <- convert_list_to_df(normal_consensus_lung, "Non-cancerous consensus")
+lung_GTEx_lung <- convert_list_to_df(lung_GTEx_lung, "Lung (GTEx")
+lung_consensus_lung <- convert_list_to_df(lung_consensus_lung, "Lung")
+blood_consensus_lung <- convert_list_to_df(blood_consensus_lung, "Blood")
+cns_consensus_lung <- convert_list_to_df(cns_consensus_lung, "CNS")
 
 consensus_res <- rbind(all_consensus_res, normal_consensus_res, cancer_consensus_res ,cns_consensus_res, blood_consensus_res)
-consensus_res$type <- as.factor(consensus_res$type)
+consensus_res$net <- as.factor(consensus_res$net)
 
 neural_res <- rbind(all_consensus_neural, normal_consensus_neural, cns_GTEx_neural, cns_consensus_neural, blood_consensus_neural)
-neural_res$type <- as.factor(neural_res$type)
+neural_res$net <- as.factor(neural_res$net)
 
 blood_res <- rbind(all_consensus_blood, normal_consensus_blood, blood_GTEx_blood, blood_consensus_blood, cns_consensus_blood)
-blood_res$type <- as.factor(blood_res$type)
+blood_res$net <- as.factor(blood_res$net)
 
 skin_res <- rbind(all_consensus_skin, normal_consensus_skin, skin_GTEx_skin, skin_consensus_skin, cns_consensus_skin, blood_consensus_skin)
-skin_res$type <- as.factor(skin_res$type)
+skin_res$net <- as.factor(skin_res$net)
 
 adipose_res <- rbind(all_consensus_adipose, normal_consensus_adipose, adipose_GTEx_adipose, adipose_consensus_adipose, cns_consensus_adipose, blood_consensus_adipose)
-adipose_res$type <- as.factor(adipose_res$type)
+adipose_res$net <- as.factor(adipose_res$net)
 
 lung_res <- rbind(all_consensus_lung, normal_consensus_lung, lung_GTEx_lung, lung_consensus_lung, cns_consensus_lung, blood_consensus_lung)
-lung_res$type <- as.factor(lung_res$type)
+lung_res$net <- as.factor(lung_res$net)
 
 liver_res <- rbind(all_consensus_liver, normal_consensus_liver, liver_GTEx_liver, liver_consensus_liver, cns_consensus_liver, blood_consensus_liver)
-liver_res$type <- as.factor(liver_res$type)
+liver_res$net <- as.factor(liver_res$net)
 
 
 saveRDS(consensus_res, paste0(home.dir, "results/enrichment_plots/consensus_res.rds"))
@@ -367,6 +361,66 @@ saveRDS(lung_res, paste0(home.dir, "results/enrichment_plots/lung_res.rds"))
 
 pathways <- c(consensus_pathways, neural_pathways, skin_pathways, blood_pathways, adipose_pathways, liver_pathways, lung_pathways)
 pathways_df <- get_names(pathways)
+list_genes <- get_anno_genes(pathways)
+ngenes <- c()
+for(i in c(1:dim(pathways_df)[1])){
+  ngenes[i] <- length(unique(list_genes$gene[list_genes$go_id == pathways_df$go_id[i]]))
+}
+pathways_df$ngenes <- ngenes
 saveRDS(pathways_df, paste0(home.dir, "results/enrichment_plots/pathways.rds"))
 
+consensus_res$net <- as.character(consensus_res$net)
+consensus_res$net <- factor(consensus_res$net, levels = c("CNS", "Blood", "Cancerous consensus", "Non-cancerous consensus", "Universal consensus"))
+p1 <- ggplot(consensus_res[consensus_res$pathway == "GO:0000278", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Mitotic cell cycle") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))
 
+p2 <- ggplot(consensus_res[consensus_res$pathway == "GO:0051276", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Chromosome organization") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))
+
+p3 <- ggplot(consensus_res[consensus_res$pathway == "GO:0033043", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Regulation of organelle organization") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))
+
+p4 <- ggplot(consensus_res[consensus_res$pathway == "GO:0007017", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Microtubule-based process") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))
+
+p5 <- ggplot(consensus_res[consensus_res$pathway == "GO:0061640", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Cytoskeleton-dependent cytokinesis") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))
+
+p6 <- ggplot(consensus_res[consensus_res$pathway == "GO:0006974", ], aes(x = degree, y = odds_ratio, fill = net, color = net))+
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5)+ scale_fill_brewer(palette="Set1") + 
+  scale_color_brewer(palette="Set1") + ggtitle("Cellular response to DNA damage stimulus") +
+  theme_classic() + geom_hline(yintercept = 1, color="black", linetype="dashed") + 
+  theme(legend.title = element_blank(), plot.title = element_text(face="bold", size = 16), axis.text = element_text(size = 12, face = "bold"), 
+        axis.title = element_text(size = 12, face = "bold"), legend.position = "bottom") + 
+  geom_errorbar(aes(ymin=odds_ratio_lower, ymax=odds_ratio_upper), width=.2, position=position_dodge(.9)) + xlab("Degree decile") + ylab("Odds ratio") + 
+  scale_x_continuous(breaks=seq(1, 10, 1))

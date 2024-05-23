@@ -34,7 +34,7 @@ lambda <- sprintf("%.2f", lambda)
 
 homeDir <- "/data/abattle4/prashanthi/recount3_paper/"
 res.dir <- paste0(homeDir, "results/")
-dat.dir <- paste0(homeDir, "/data")
+dat.dir <- paste0(homeDir, "data/")
 
 geneData <- readRDS(paste0(dat.dir, "geneData.rds"))
 
@@ -141,18 +141,18 @@ n.edges <- lapply(inferred.networks, function(iedge){
 n.edges <- unlist(n.edges)
 
 # Read in the true networks
-true_edges <- readRDS(paste0(dat.dir, "canonical_pathways_edgelist.rds"))
-gene1 <- gsub("_.*", "", true_edges)
-gene2 <- gsub(".*_", "", true_edges)
-true_edges.df <- data.frame(gene1, gene2)
+canonical_edges <- readRDS(paste0(dat.dir, "canonical_pathways_edgelist.rds"))
+gene1 <- gsub("_.*", "", canonical_edges)
+gene2 <- gsub(".*_", "", canonical_edges)
+canonical_edges.df <- data.frame(gene1, gene2)
 # Restrict the true edges only to those gene pairs where both genes are found in 
 # the genes that we do inference over
-true_edges.df <- true_edges.df[true_edges.df$gene1 %in% rownames(net[[1]]), ]
-true_edges.df <- true_edges.df[true_edges.df$gene2 %in% rownames(net[[1]]), ]
-true_edges <- paste(true_edges.df$gene1, true_edges.df$gene2, sep = "_")
+canonical_edges.df <- canonical_edges.df[canonical_edges.df$gene1 %in% rownames(net[[1]]), ]
+canonical_edges.df <- canonical_edges.df[canonical_edges.df$gene2 %in% rownames(net[[1]]), ]
+canonical_edges <- paste(canonical_edges.df$gene1, canonical_edges.df$gene2, sep = "_")
 
 # Create a network with all possible edges
-all_genes <- unique(c(rownames(net[[1]]), true_edges.df$gene1, true_edges.df$gene2))
+all_genes <- unique(c(rownames(net[[1]]), canonical_edges.df$gene1, canonical_edges.df$gene2))
 ngenes <- length(all_genes)
 all.net <- matrix(1, nrow = ngenes, ncol = ngenes)
 colnames(all.net) <- all_genes[order(all_genes)]
@@ -168,20 +168,20 @@ frac.in.true_edges <- lapply(inferred.networks, function(iedge){
 frac.in.true_edges <- unlist(frac.in.true_edges)
 
 true_positives <- lapply(inferred.networks, function(iedge){
-  length(intersect(iedge, true_edges))
+  length(intersect(iedge, canonical_edges))
 })
 
 false_positives <- lapply(inferred.networks, function(iedge){
-  length(iedge) - length(intersect(iedge, true_edges))
+  length(iedge) - length(intersect(iedge, canonical_edges))
 })
 
 false_negatives <- lapply(inferred.networks, function(iedge){
-  length(true_edges) - length(intersect(iedge, true_edges))
+  length(canonical_edges) - length(intersect(iedge, canonical_edges))
 })
 
 true_negatives <- lapply(inferred.networks, function(iedge){
   cat(length(iedge), "\n")
-  length(intersect(all.edgelist[!all.edgelist %in% true_edges],all.edgelist[!all.edgelist %in% iedge]))
+  length(intersect(all.edgelist[!all.edgelist %in% canonical_edges],all.edgelist[!all.edgelist %in% iedge]))
 })
 
 true_positives <- unlist(true_positives)
@@ -191,6 +191,16 @@ true_negatives <- unlist(true_negatives)
 
 recall <- true_positives/(true_positives + false_negatives)
 precision <- true_positives/(true_positives + false_positives)
+fpr <- false_positives/(false_positives + true_negatives)
+df <- data.frame(n.edges, recall, precision, fpr)
+df <- df[1:15, ]
+
+ggplot(df, aes(n.edges, recall)) + geom_point() + scale_x_continuous(trans='log10') + theme_classic() + xlab("log network density") + ylab("Recall")
+ggplot(df, aes(n.edges, precision)) + geom_point() + scale_x_continuous(trans='log10') + theme_classic() + xlab("log network density") + ylab("Precision")
+ggplot(df, aes(recall, precision)) + geom_point() + theme_classic() + xlab("Recall") + ylab("Precision")
+ggplot(df, aes(fpr, recall)) + geom_point() + theme_classic() + xlab("FPR") + ylab("TPR") + geom_line() + geom_abline(slope = 1, intercept = 0, col = "red", linetype = "dashed")
+
+
 
 print("Num.  edges and fraction in true_edges computed")
 odds_ratio <- c()

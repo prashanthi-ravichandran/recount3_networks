@@ -228,3 +228,7 @@ saveRDS(skin_consensus_res, paste0(homeDir, "results/weighted_cov_networks/skin/
 saveRDS(liver_consensus_res, paste0(homeDir, "results/weighted_cov_networks/liver/all/net_28/node_closeness_enrichment.rds"))
 saveRDS(adipose_consensus_res, paste0(homeDir, "results/weighted_cov_networks/adipose/all/net_11/node_closeness_enrichment.rds"))
 saveRDS(lung_consensus_res, paste0(homeDir, "results/weighted_cov_networks/lung/all/net_10/node_closeness_enrichment.rds"))
+
+
+
+
