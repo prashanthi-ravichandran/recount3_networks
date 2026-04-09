@@ -1,0 +1,59 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--print-snps list.txt \
+--ld-wind-cm 1.0 \
+--out /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/all-genes/SAMGENIC.9 \
+--bfile /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/1000G_EUR_Phase3_plink/1000G.EUR.QC.9 \
+--annot /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/all-genes/SAMGENIC.9.annot.gz \
+--l2  
+
+Beginning analysis at Tue Oct  4 14:56:39 2022
+Read list of 438106 SNPs from /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/1000G_EUR_Phase3_plink/1000G.EUR.QC.9.bim
+Read 1 annotations for 438106 SNPs from /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/all-genes/SAMGENIC.9.annot.gz
+Read list of 489 individuals from /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/1000G_EUR_Phase3_plink/1000G.EUR.QC.9.fam
+Reading genotypes from /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/1000G_EUR_Phase3_plink/1000G.EUR.QC.9.bed
+Estimating LD Score.
+Reading list of 1217311 SNPs for which to print LD Scores from list.txt
+After merging with --print-snps, LD Scores for 55464 SNPs will be printed.
+Writing LD Scores for 55464 SNPs to /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/all-genes/SAMGENIC.9.l2.ldscore.gz
+
+Summary of LD Scores in /data/abattle4/prashanthi/recount3/ldsc/pathwaynetwork_annot_ld_script/all-genes/SAMGENIC.9.l2.ldscore.gz
+         MAF        L2
+mean  0.2359   78.1824
+std   0.1423   76.8411
+min   0.0051   -1.7746
+25%   0.1115   24.1379
+50%   0.2249   58.9909
+75%   0.3569  107.9048
+max   0.5000  681.4565
+
+MAF/LD Score Correlation Matrix
+        MAF      L2
+MAF  1.0000  0.1374
+L2   0.1374  1.0000
+
+Annotation Correlation Matrix
+                           SAMGENIC.extend.100kb.bed
+SAMGENIC.extend.100kb.bed                        1.0
+
+Annotation Matrix Column Sums
+SAMGENIC.extend.100kb.bed    327363
+
+Summary of Annotation Matrix Row Sums
+count    438106.0000
+mean          0.7472
+std           0.4346
+min           0.0000
+25%           0.0000
+50%           1.0000
+75%           1.0000
+max           1.0000
+Analysis finished at Tue Oct  4 15:57:50 2022
+Total time elapsed: 1.0h:1.0m:11.56s
